@@ -234,14 +234,15 @@ document.getElementById('file').addEventListener('change',async e=>{
 });
 
 function loadDemo(){
+  let seed=42; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
   const W=['Alger','Oran','Boumerdès','Blida','Sétif','Tiaret'], S=['09.01 Agence Blida','35.01 Agence Boumerdes','48.1 Agence Oued Rhiou'], SUB=['Wasy','STOP DESK'];
   const T=[['transit','En transit'],['valider','À valider'],['livre','Livrée, non encaissée'],['retour','À retourner']];
-  const out=[]; const base=new Date(); base.setDate(base.getDate()-30);
+  const out=[]; const base=new Date('2026-10-01T08:00:00');
   for(let i=0;i<240;i++){
-    const t=T[Math.floor(Math.random()*T.length)]; const c=new Date(base.getTime()+Math.random()*30*864e5);
-    const d=t[0]==='livre'?new Date(c.getTime()+(10+Math.random()*60)*36e5):null;
-    out.push({statut:t[0],statutLabel:t[1],id:'DEMO'+(1000+i),expediteur:'Démo',client:'Client démo',wilaya:W[Math.floor(Math.random()*W.length)],commune:'',
-      station:S[Math.floor(Math.random()*S.length)],sous:SUB[Math.floor(Math.random()*2)],montant:Math.random()<0.1?null:1000+Math.floor(Math.random()*12000),
+    const t=T[Math.floor(rnd()*T.length)]; const c=new Date(base.getTime()+rnd()*30*864e5);
+    const d=t[0]==='livre'?new Date(c.getTime()+(10+rnd()*60)*36e5):null;
+    out.push({statut:t[0],statutLabel:t[1],id:'DEMO'+(1000+i),expediteur:'Démo',client:'Client démo',wilaya:W[Math.floor(rnd()*W.length)],commune:'',
+      station:S[Math.floor(rnd()*S.length)],sous:SUB[Math.floor(rnd()*2)],montant:rnd()<0.1?null:1000+Math.floor(rnd()*12000),
       created:c,delivered:d,dispatched:null,delai:d?(d-c)/36e5:null,remarque:'',source:'démo'});
   }
   rows=out;
