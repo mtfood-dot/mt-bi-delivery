@@ -6,269 +6,248 @@
 <title>BI MT Delivery</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root { --blue:#1553A4; --gold:#F7B500; --ink:#263238; --bg:#f4f6fa; --card:#fff; --muted:#6b7280; --ok:#16a34a; --warn:#d97706; --ko:#dc2626; }
+  :root { --blue:#1553A4; --gold:#F7B500; --ink:#263238; --bg:#f4f6fa; --card:#fff; --muted:#64748b; --line:#e2e8f0; --ok:#15803d; --warn:#b45309; --ko:#b91c1c; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
   header { background:var(--blue); color:#fff; padding:14px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
   header h1 { margin:0; font-size:19px; } header h1 span { color:var(--gold); }
-  main { max-width:1280px; margin:0 auto; padding:18px 20px 40px; }
+  main { max-width:1280px; margin:0 auto; padding:16px 18px 40px; }
   .btn { background:var(--gold); color:var(--ink); border:0; padding:9px 14px; border-radius:8px; font-weight:600; cursor:pointer; }
   .btn.alt { background:#fff; color:var(--blue); }
-  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
-  select, input { padding:7px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; font:inherit; }
-  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
-  .tab { background:#fff; border:1px solid #d6dce6; color:var(--blue); padding:8px 14px; border-radius:999px; cursor:pointer; font:inherit; }
+  .banner { background:#fff7d6; border:1px solid #f5d76e; padding:9px 12px; border-radius:8px; font-size:13px; margin-bottom:12px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; font-size:13px; }
+  select, input { padding:6px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; font:inherit; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .tab { background:#fff; border:1px solid #cbd5e1; color:var(--blue); padding:7px 13px; border-radius:999px; cursor:pointer; font:inherit; }
   .tab.on { background:var(--blue); color:#fff; border-color:var(--blue); }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px; }
-  .kpi { background:var(--card); border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); border-top:4px solid var(--blue); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:10px; margin-bottom:14px; }
+  .kpi { background:var(--card); border-radius:12px; padding:13px; box-shadow:0 1px 3px rgba(0,0,0,.06); border-top:4px solid var(--blue); }
   .kpi.gold { border-top-color:var(--gold); }
-  .kpi .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.3px; }
-  .kpi .value { font-size:24px; font-weight:700; margin-top:4px; }
-  .kpi .sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  .kpi .label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.3px; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:4px; }
+  .kpi .sub { font-size:11px; color:var(--muted); margin-top:2px; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .grid .full { grid-column:1/-1; }
-  @media (max-width:800px) { .grid { grid-template-columns:1fr; } }
-  .card { background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .full { grid-column:1/-1; }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:12px; padding:15px; box-shadow:0 1px 3px rgba(0,0,0,.06); overflow-x:auto; }
   .card h2 { font-size:14px; margin:0 0 10px; color:var(--blue); }
   table { width:100%; border-collapse:collapse; font-size:13px; }
-  th,td { text-align:left; padding:7px 6px; border-bottom:1px solid #e5e7eb; }
+  th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
   th { color:var(--muted); font-size:11px; text-transform:uppercase; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
   .bar-row { display:flex; align-items:center; gap:8px; margin:5px 0; font-size:13px; }
-  .bar-row .name { width:140px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-row .name { width:150px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .bar-row .track { flex:1; background:#e5e7eb; border-radius:6px; height:12px; overflow:hidden; }
   .bar-row .fill { background:var(--blue); height:100%; }
-  .bar-row .val { width:110px; text-align:right; font-variant-numeric:tabular-nums; }
+  .bar-row .val { width:120px; text-align:right; font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; color:#fff; }
   .alert { padding:9px 12px; border-radius:8px; margin-bottom:8px; font-size:13px; }
-  .alert.ko { background:#fee2e2; color:#7f1d1d; } .alert.ok { background:#dcfce7; color:#14532d; } .alert.warn { background:#fef3c7; color:#78350f; }
+  .alert.ko { background:#fee2e2; } .alert.ok { background:#dcfce7; } .alert.warn { background:#fef3c7; }
   .hint { color:var(--muted); font-size:12px; }
   .empty { text-align:center; padding:50px 20px; color:var(--muted); }
   svg text { font-size:10px; fill:var(--muted); }
-  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; color:#fff; }
 </style>
 </head>
 <body>
 <header>
   <h1>BI <span>MT Delivery</span></h1>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <input type="file" id="file" accept=".csv,.xlsx,.xls,text/csv" hidden>
-    <button class="btn" onclick="document.getElementById('file').click()">Importer CSV / Excel</button>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" multiple hidden>
+    <button class="btn" onclick="document.getElementById('file').click()">Importer les fichiers Ecotrack</button>
     <button class="btn alt" onclick="loadDemo()">Données de démo</button>
   </div>
 </header>
 
 <main>
+  <div id="banner"></div>
   <div class="toolbar">
-    <label>Zone <select id="fZone" onchange="render()"><option value="">Toutes</option></select></label>
-    <label>Du <input type="date" id="fFrom" onchange="render()"></label>
-    <label>Au <input type="date" id="fTo" onchange="render()"></label>
-    <label>Objectif commandes/mois <input type="number" id="objCmd" value="3000" style="width:90px" onchange="render()"></label>
-    <label>Seuil réussite % <input type="number" id="objOk" value="85" style="width:70px" onchange="render()"></label>
+    <label>Station <select id="fStation" onchange="render()"><option value="">Toutes</option></select></label>
+    <label>Wilaya <select id="fWilaya" onchange="render()"><option value="">Toutes</option></select></label>
+    <label>Sous-traitant <select id="fSub" onchange="render()"><option value="">Tous</option></select></label>
     <span class="hint" id="info"></span>
   </div>
-
   <div class="tabs" id="tabs"></div>
-  <div id="content"><div class="empty">Importez un fichier CSV ou Excel, ou cliquez sur « Données de démo ».</div></div>
-
-  <p class="hint" style="margin-top:22px">
-    Colonnes reconnues (noms souples) : <b>date</b>, <b>zone</b>, <b>statut</b> (livree / annulee / echec), <b>frais</b> (DA), <b>livreur</b>, <b>restaurant</b>, <b>client</b> (nom ou téléphone), <b>cout</b> (coût de la course, DA), <b>motif</b> (cause d'échec), <b>delai</b> (minutes).
+  <div id="content"><div class="empty">Importez vos fichiers Ecotrack (4 exports : en transit, à valider, livrés non encaissés, à retourner), ou cliquez sur « Données de démo ».</div></div>
+  <p class="hint" style="margin-top:20px">
+    Le statut est déduit du nom du fichier : « en transit », « à valider », « livrés non encaissés », « à retourner ». Les montants « [object Object] » ou vides sont comptés comme <b>N/A</b> et ne sont pas additionnés.
   </p>
 </main>
 
 <script>
-let rows = [];
-let tab = 'ops';
-
-const COL = {
-  date:['date','jour','created','date_commande'], zone:['zone','secteur','region'], statut:['statut','status','etat'],
-  frais:['frais','montant','prix','fee','total'], livreur:['livreur','driver','coursier'], restaurant:['restaurant','partenaire','shop','marchand'],
-  client:['client','customer','telephone','tel'], cout:['cout','coût','cost','cout_course'], motif:['motif','raison','cause','reason'], delai:['delai','délai','duree','minutes']
+let rows=[]; let tab='vue';
+const STATUTS={
+  transit:{label:'En transit',color:'#2563eb'},
+  valider:{label:'À valider',color:'#7c3aed'},
+  livre:{label:'Livrée, non encaissée',color:'#15803d'},
+  retour:{label:'À retourner',color:'#b45309'}
 };
-const TABS = [['ops','Opérations'],['fin','Finances'],['liv','Livreurs'],['zon','Zones'],['mtf','MT Food'],['cli','Clients'],['alr','Alertes']];
+const TABS=[['vue','Vue d’ensemble'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
 
-function norm(s){ return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'_'); }
-function findCol(h, keys){ const n=h.map(norm); for(const k of keys){ const i=n.findIndex(x=>x===k||x.includes(k)); if(i>=0) return i; } return -1; }
-function num(s){ return parseFloat(String(s||'0').replace(',','.').replace(/[^\d.\-]/g,''))||0; }
-
-function parseCSV(text){
-  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
-  if(!lines.length) return [];
-  const sep = lines[0].split(';').length > lines[0].split(',').length ? ';' : ',';
-  const h = lines[0].split(sep); const idx={};
-  for(const k in COL) idx[k]=findCol(h,COL[k]);
-  return lines.slice(1).map(l=>{
-    const c=l.split(sep); const g=k=>idx[k]>=0?(c[idx[k]]||'').trim():'';
-    const d=new Date(g('date'));
-    return { date: isNaN(d)?null:d, zone:g('zone')||'Non renseignée', statut:norm(g('statut'))||'inconnu',
-      frais:num(g('frais')), livreur:g('livreur')||'Non renseigné', restaurant:g('restaurant'),
-      client:g('client'), cout:num(g('cout')), motif:g('motif'), delai:num(g('delai')) };
-  }).filter(r=>r.date);
+const fmt=n=>Math.round(n).toLocaleString('fr-FR');
+const money=v=>v==null?'N/A':fmt(v)+' DA';
+const dateOf=v=>{ if(!v) return null; if(v instanceof Date) return isNaN(v)?null:v; const d=new Date(String(v).replace(' ','T')); return isNaN(d)?null:d; };
+const txt=v=>(v==null?'':String(v)).trim();
+function montant(v){ if(typeof v==='number') return v; const s=txt(v); if(!s||/object|\.|N\/A/i.test(s)&&!/\d/.test(s)) return null; const n=parseFloat(s.replace(/\s/g,'').replace(',','.')); return isNaN(n)?null:n; }
+function statutFromName(name){
+  const n=name.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  if(/transit/.test(n)) return 'transit';
+  if(/valider/.test(n)) return 'valider';
+  if(/encaiss|livre/.test(n)) return 'livre';
+  if(/retourner/.test(n)) return 'retour';
+  return 'inconnu';
 }
 
-function fromSheet(ws){
-  const csv = XLSX.utils.sheet_to_csv(ws,{FS:','});
-  return csv;
+function parseWorkbook(data, name){
+  const wb=XLSX.read(data,{type:'array',cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const hi=aoa.findIndex(r=>r.some(c=>txt(c)==='ID'));
+  if(hi<0) return [];
+  const h=aoa[hi].map(txt);
+  const get=(r,k)=>{ const i=h.indexOf(k); return i>=0?r[i]:null; };
+  const statut=statutFromName(name);
+  return aoa.slice(hi+1).filter(r=>r.some(c=>c!=null&&txt(c)!=='')).map(r=>{
+    const created=dateOf(get(r,'Date création')||get(r,'Crée le'));
+    const delivered=dateOf(get(r,'Livré le'));
+    const dispatched=dateOf(get(r,'Dispatche le'));
+    return {
+      statut, statutLabel:STATUTS[statut]?.label||'Inconnu',
+      id:txt(get(r,'ID')), expediteur:txt(get(r,'Expéditeur')), client:txt(get(r,'Client')),
+      wilaya:txt(get(r,'Wilaya'))||'Non renseignée', commune:txt(get(r,'Commune')),
+      station:txt(get(r,'Station de livraison'))||txt(get(r,'Station d\'expédition'))||'Non renseignée',
+      sous:txt(get(r,'Sous traitant'))||'Non renseigné',
+      montant:montant(get(r,'Total')), created, delivered, dispatched,
+      delai: created&&delivered ? (delivered-created)/3600000 : null,
+      remarque:txt(get(r,'Remarque')), source:name
+    };
+  }).filter(r=>r.id);
 }
-
-const isOk = s => /livr|done|delivered|succes/.test(s);
-const isFail = s => /echec|annul|retour|cancel|fail/.test(s);
-const fmt = n => Math.round(n).toLocaleString('fr-FR');
-const pct = (a,b) => b ? (a/b*100) : 0;
-const day = d => d.toISOString().slice(0,10);
-const month = d => d.toISOString().slice(0,7);
 
 function filtered(){
-  const z=document.getElementById('fZone').value, f=document.getElementById('fFrom').value, t=document.getElementById('fTo').value;
-  return rows.filter(r=>(!z||r.zone===z)&&(!f||r.date>=new Date(f))&&(!t||r.date<=new Date(t+'T23:59:59')));
+  const st=document.getElementById('fStation').value, wi=document.getElementById('fWilaya').value, su=document.getElementById('fSub').value;
+  return rows.filter(r=>(!st||r.station===st)&&(!wi||r.wilaya===wi)&&(!su||r.sous===su));
 }
-
 function summary(list){
-  const ok=list.filter(r=>isOk(r.statut)), ko=list.filter(r=>isFail(r.statut));
-  const ca=ok.reduce((s,r)=>s+r.frais,0), cost=ok.reduce((s,r)=>s+r.cout,0);
-  return { n:list.length, ok:ok.length, ko:ko.length, ca, cost, marge:ca-cost,
-    taux:pct(ok.length,list.length), panier: ok.length?ca/ok.length:0,
-    livreurs:new Set(list.map(r=>r.livreur)).size, clients:new Set(list.map(r=>r.client).filter(Boolean)).size };
+  const m=list.filter(r=>r.montant!=null);
+  const livre=list.filter(r=>r.statut==='livre');
+  const delais=list.filter(r=>r.delai!=null&&r.delai>=0).map(r=>r.delai).sort((a,b)=>a-b);
+  const med=delais.length?delais[Math.floor(delais.length/2)]:null;
+  const moy=delais.length?delais.reduce((s,x)=>s+x,0)/delais.length:null;
+  return {
+    n:list.length, byStatut:Object.fromEntries(Object.keys(STATUTS).map(k=>[k,list.filter(r=>r.statut===k).length])),
+    montantTotal:m.length?m.reduce((s,r)=>s+r.montant,0):null, montantN:m.length,
+    nonEncaisse:livre.reduce((s,r)=>s+(r.montant||0),0), livreN:livre.length,
+    delaiMoy:moy, delaiMed:med, delaiN:delais.length, sansMontant:list.length-m.length
+  };
 }
-
-function groupBy(list,key){
-  const m={};
-  for(const r of list){ const k=key(r); if(!k) continue; (m[k]=m[k]||[]).push(r); }
-  return m;
+function groupBy(list,fn){ const g={}; for(const r of list){ const k=fn(r); (g[k]=g[k]||[]).push(r); } return g; }
+function bars(map,title,fn,unit,fmtFn){
+  const e=Object.entries(map).map(([k,v])=>[k,fn(v)]).filter(x=>x[1]!=null).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const max=Math.max(1,...e.map(x=>x[1]));
+  return `<div class="card"><h2>${title}</h2>`+(e.length?e.map(([k,v])=>`<div class="bar-row"><div class="name" title="${k}">${k}</div><div class="track"><div class="fill" style="width:${(v/max*100).toFixed(1)}%"></div></div><div class="val">${fmtFn?fmtFn(v):fmt(v)} ${unit}</div></div>`).join(''):'<p class="hint">Aucune donnée</p>')+`</div>`;
 }
-
-function bars(map, title, valFn, unit){
-  const entries=Object.entries(map).map(([k,v])=>[k,valFn(v)]).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  const max=Math.max(1,...entries.map(e=>e[1]));
-  return `<div class="card"><h2>${title}</h2>` + (entries.length?entries.map(([k,v])=>
-    `<div class="bar-row"><div class="name" title="${k}">${k}</div><div class="track"><div class="fill" style="width:${(v/max*100).toFixed(1)}%"></div></div><div class="val">${fmt(v)} ${unit}</div></div>`).join(''):'<p class="hint">Aucune donnée</p>')+`</div>`;
+function statusBar(list){
+  const total=list.length||1;
+  return `<div class="card full"><h2>Répartition des colis par statut</h2><div style="display:flex;height:22px;border-radius:6px;overflow:hidden">${Object.entries(STATUTS).map(([k,s])=>{const n=list.filter(r=>r.statut===k).length;return n?`<div title="${s.label} : ${n}" style="width:${(n/total*100).toFixed(1)}%;background:${s.color}"></div>`:'';}).join('')}</div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px">${Object.entries(STATUTS).map(([k,s])=>`<span><span class="pill" style="background:${s.color}">${s.label}</span> ${fmt(list.filter(r=>r.statut===k).length)}</span>`).join('')}</div></div>`;
 }
-
-function lineChart(points, title){
-  if(!points.length) return '';
-  const W=600,H=170,P=28; const max=Math.max(1,...points.map(p=>p.v));
-  const step=points.length>1?(W-2*P)/(points.length-1):0;
-  const xy=points.map((p,i)=>[P+i*step, H-P-(p.v/max)*(H-2*P)]);
-  const path=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-  const labels=points.filter((_,i)=>i%Math.ceil(points.length/6)===0).map((p)=>{const i=points.indexOf(p);return `<text x="${xy[i][0].toFixed(1)}" y="${H-6}" text-anchor="middle">${p.k}</text>`;}).join('');
-  return `<div class="card full"><h2>${title}</h2><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
-    <line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="#d6dce6"/>
-    <path d="${path}" fill="none" stroke="#1553A4" stroke-width="2.5"/>
-    ${xy.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="#F7B500"/>`).join('')}
-    <text x="4" y="${P}">${fmt(max)}</text><text x="4" y="${H-P}">0</text>${labels}</svg></div>`;
-}
-
-function kpi(label,value,sub,gold){ return `<div class="kpi ${gold?'gold':''}"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub||''}</div></div>`; }
+function kpi(l,v,s,g){ return `<div class="kpi ${g?'gold':''}"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s||''}</div></div>`; }
+function hours(h){ return h==null?'N/A':(h<48?h.toFixed(1)+' h':(h/24).toFixed(1)+' j'); }
 
 function render(){
-  const zones=[...new Set(rows.map(r=>r.zone))].sort();
-  const sel=document.getElementById('fZone'), cur=sel.value;
-  sel.innerHTML='<option value="">Toutes</option>'+zones.map(z=>`<option ${z===cur?'selected':''}>${z}</option>`).join('');
+  const stSel=document.getElementById('fStation'), wiSel=document.getElementById('fWilaya'), suSel=document.getElementById('fSub');
+  const set=(sel,vals,label)=>{ const c=sel.value; sel.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option ${v===c?'selected':''}>${v}</option>`).join(''); };
+  set(stSel,[...new Set(rows.map(r=>r.station))].sort(),'Toutes'); set(wiSel,[...new Set(rows.map(r=>r.wilaya))].sort(),'Toutes'); set(suSel,[...new Set(rows.map(r=>r.sous))].sort(),'Tous');
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('');
   if(!rows.length) return;
   const list=filtered(), S=summary(list);
-  document.getElementById('info').textContent=`${S.n} commande(s) sur ${rows.length}`;
-  const objCmd=+document.getElementById('objCmd').value||0, objOk=+document.getElementById('objOk').value||0;
-  const byDay=groupBy(list,day), days=Object.keys(byDay).sort();
-  const byMonth=groupBy(list,month), months=Object.keys(byMonth).sort();
-  const byZone=groupBy(list,r=>r.zone), byDriver=groupBy(list,r=>r.livreur), byResto=groupBy(list.filter(r=>r.restaurant),r=>r.restaurant);
-  const byClient=groupBy(list.filter(r=>r.client),r=>r.client);
-  const cmdPerDay=days.map(d=>({k:d.slice(5),v:byDay[d].length}));
-  const caPerDay=days.map(d=>({k:d.slice(5),v:byDay[d].filter(r=>isOk(r.statut)).reduce((s,r)=>s+r.frais,0)}));
+  document.getElementById('info').textContent=`${S.n} colis affichés sur ${rows.length}`;
+  const byW=groupBy(list,r=>r.wilaya), byS=groupBy(list,r=>r.station), bySub=groupBy(list,r=>r.sous);
   let html='';
 
-  if(tab==='ops'){
+  if(tab==='vue'){
     html+=`<div class="kpis">
-      ${kpi('Commandes',fmt(S.n),'sur la période',false)}
-      ${kpi('Taux de réussite',S.taux.toFixed(1)+'%',`objectif ${objOk}%`,true)}
-      ${kpi('Livrées',fmt(S.ok),'')}
-      ${kpi('Échecs / annulations',fmt(S.ko),pct(S.ko,S.n).toFixed(1)+'% du total',false)}
-      ${kpi('Délai moyen',(list.filter(r=>r.delai).reduce((s,r)=>s+r.delai,0)/(list.filter(r=>r.delai).length||1)).toFixed(0)+' min','si colonne délai',true)}
-      ${kpi('Jours actifs',days.length,'',false)}</div>`;
-    html+=lineChart(cmdPerDay,'Commandes par jour');
-    const motifs=groupBy(list.filter(r=>isFail(r.statut)&&r.motif),r=>r.motif);
-    html+=`<div class="grid">${bars(byZone,'Commandes par zone',v=>v.length,'cmd')}${bars(motifs,'Causes des échecs',v=>v.length,'cas')}</div>`;
+      ${kpi('Colis',fmt(S.n),'toutes listes')}
+      ${kpi('En transit',fmt(S.byStatut.transit),'')}
+      ${kpi('À valider',fmt(S.byStatut.valider),'')}
+      ${kpi('Livrés non encaissés',fmt(S.livreN),money(S.nonEncaisse),true)}
+      ${kpi('À retourner',fmt(S.byStatut.retour),'')}
+      ${kpi('Délai moyen livraison',hours(S.delaiMoy),`médian ${hours(S.delaiMed)} · ${S.delaiN} colis`,true)}
+      ${kpi('Montant total connu',money(S.montantTotal),`${S.montantN} colis avec montant`)}
+    </div>`;
+    html+=statusBar(list);
+    html+=`<div class="grid" style="margin-top:14px">${bars(byW,'Colis par wilaya',v=>v.length,'colis')}${bars(byS,'Colis par station',v=>v.length,'colis')}</div>`;
   }
 
-  if(tab==='fin'){
+  if(tab==='zones'){
+    const rowsW=Object.entries(byW).sort((a,b)=>b[1].length-a[1].length).map(([w,v])=>{const s=summary(v);return `<tr><td>${w}</td><td class="num">${s.n}</td><td class="num">${s.byStatut.livre}</td><td class="num">${s.byStatut.retour}</td><td class="num">${money(s.nonEncaisse)}</td><td class="num">${hours(s.delaiMoy)}</td></tr>`;}).join('');
+    html+=`<div class="grid">${bars(byW,'Colis par wilaya',v=>v.length,'colis')}${bars(byS,'Colis par station',v=>v.length,'colis')}
+    <div class="card full"><h2>Détail par wilaya</h2><table><tr><th>Wilaya</th><th class="num">Colis</th><th class="num">Livrés non encaissés</th><th class="num">À retourner</th><th class="num">Non encaissé</th><th class="num">Délai moyen</th></tr>${rowsW}</table></div></div>`;
+  }
+
+  if(tab==='sous'){
+    const rowsS=Object.entries(bySub).map(([k,v])=>{const s=summary(v);return `<tr><td>${k}</td><td class="num">${s.n}</td><td class="num">${s.byStatut.livre}</td><td class="num">${money(s.nonEncaisse)}</td><td class="num">${s.byStatut.retour}</td><td class="num">${hours(s.delaiMoy)}</td></tr>`;}).join('');
+    html+=`<div class="grid">${bars(bySub,'Colis par sous-traitant',v=>v.length,'colis')}${bars(bySub,'Montant non encaissé par sous-traitant',v=>summary(v).nonEncaisse,'DA')}
+    <div class="card full"><h2>Détail par sous-traitant</h2><table><tr><th>Sous-traitant</th><th class="num">Colis</th><th class="num">Livrés non encaissés</th><th class="num">Non encaissé</th><th class="num">À retourner</th><th class="num">Délai moyen</th></tr>${rowsS}</table></div></div>`;
+  }
+
+  if(tab==='finance'){
     html+=`<div class="kpis">
-      ${kpi("Chiffre d'affaires livré",fmt(S.ca)+' DA','',true)}
-      ${kpi('Panier moyen',fmt(S.panier)+' DA','par livraison réussie',false)}
-      ${kpi('Coût des courses',fmt(S.cost)+' DA','si colonne coût',false)}
-      ${kpi('Marge estimée',fmt(S.marge)+' DA',S.ca?pct(S.marge,S.ca).toFixed(1)+'% du CA':'',true)}</div>`;
-    html+=lineChart(caPerDay,'Chiffre d\'affaires livré par jour');
-    const caMonth=months.map(m=>({k:m,v:byMonth[m].filter(r=>isOk(r.statut)).reduce((s,r)=>s+r.frais,0)}));
-    html+=lineChart(caMonth,'Chiffre d\'affaires par mois');
-    html+=`<div class="grid">${bars(byZone,'CA par zone',v=>v.filter(r=>isOk(r.statut)).reduce((s,r)=>s+r.frais,0),'DA')}</div>`;
+      ${kpi('Montant total connu',money(S.montantTotal),`${S.montantN} colis`,true)}
+      ${kpi('Montant livré non encaissé',money(S.nonEncaisse),`${S.livreN} colis livrés`)}
+      ${kpi('Montant en transit',money(list.filter(r=>r.statut==='transit'&&r.montant!=null).reduce((s,r)=>s+r.montant,0)),'')}
+      ${kpi('Montant à retourner',money(list.filter(r=>r.statut==='retour'&&r.montant!=null).reduce((s,r)=>s+r.montant,0)),'')}
+    </div>
+    <p class="hint">Marge non calculée : aucune donnée de coût de livraison dans ces exports. Montants en DA.</p>`;
+    html+=`<div class="grid">${bars(byW,'Montant total par wilaya',v=>v.reduce((s,r)=>s+(r.montant||0),0),'DA')}${bars(bySub,'Montant non encaissé par sous-traitant',v=>summary(v).nonEncaisse,'DA')}</div>`;
   }
 
-  if(tab==='liv'){
-    const rowsD=Object.entries(byDriver).map(([d,v])=>{const s=summary(v);return `<tr><td>${d}</td><td class="num">${s.n}</td><td class="num">${s.ok}</td><td class="num">${s.ko}</td><td class="num">${s.taux.toFixed(0)}%</td><td class="num">${fmt(s.ca)} DA</td></tr>`;}).join('');
-    html+=`<div class="kpis">${kpi('Livreurs actifs',S.livreurs,'',true)}${kpi('Courses / livreur',fmt(S.n/(S.livreurs||1)),'moyenne',false)}</div>`;
-    html+=`<div class="grid">${bars(byDriver,'Courses par livreur',v=>v.length,'cmd')}${bars(byDriver,'Taux de réussite par livreur',v=>summary(v).taux,'%')}
-      <div class="card full"><h2>Détail par livreur</h2><table><tr><th>Livreur</th><th class="num">Cmd</th><th class="num">Livrées</th><th class="num">Échecs</th><th class="num">Réussite</th><th class="num">CA</th></tr>${rowsD}</table></div></div>`;
+  if(tab==='qualite'){
+    const sansMontant=list.filter(r=>r.montant==null);
+    const doublons=rows.length-new Set(rows.map(r=>r.id)).size;
+    const sansStation=list.filter(r=>r.station==='Non renseignée').length;
+    html+=`<div class="kpis">
+      ${kpi('Colis sans montant',fmt(sansMontant.length),'exclus des totaux',true)}
+      ${kpi('Doublons (même ID)',fmt(doublons),'')}
+      ${kpi('Sans station',fmt(sansStation),'')}
+      ${kpi('Sans délai calculable',fmt(list.filter(r=>r.delai==null).length),'pas de date de livraison')}</div>`;
+    html+=`<div class="card"><h2>Colis sans montant</h2><table><tr><th>ID</th><th>Statut</th><th>Wilaya</th><th>Source</th></tr>${sansMontant.slice(0,40).map(r=>`<tr><td>${r.id}</td><td>${r.statutLabel}</td><td>${r.wilaya}</td><td>${r.source.slice(0,30)}</td></tr>`).join('')}</table>${sansMontant.length>40?`<p class="hint">+ ${sansMontant.length-40} autres</p>`:''}</div>`;
   }
 
-  if(tab==='zon'){
-    const rowsZ=Object.entries(byZone).map(([z,v])=>{const s=summary(v);return `<tr><td>${z}</td><td class="num">${s.n}</td><td class="num">${s.ok}</td><td class="num">${s.taux.toFixed(0)}%</td><td class="num">${fmt(s.ca)} DA</td><td class="num">${fmt(s.panier)} DA</td></tr>`;}).join('');
-    html+=`<div class="grid">${bars(byZone,'Commandes par zone',v=>v.length,'cmd')}${bars(byZone,'Réussite par zone',v=>summary(v).taux,'%')}
-      <div class="card full"><h2>Performance par zone</h2><table><tr><th>Zone</th><th class="num">Cmd</th><th class="num">Livrées</th><th class="num">Réussite</th><th class="num">CA</th><th class="num">Panier</th></tr>${rowsZ}</table></div></div>`;
-  }
-
-  if(tab==='mtf'){
-    const rowsR=Object.entries(byResto).map(([r,v])=>{const s=summary(v);return `<tr><td>${r}</td><td class="num">${s.n}</td><td class="num">${s.ok}</td><td class="num">${fmt(s.ca)} DA</td></tr>`;}).join('');
-    html+=`<div class="kpis">${kpi('Commandes MT Food',fmt(list.filter(r=>r.restaurant).length),'avec restaurant',true)}${kpi('Restaurants actifs',Object.keys(byResto).length,'',false)}</div>`;
-    html+=`<div class="grid">${bars(byResto,'Commandes par restaurant',v=>v.length,'cmd')}
-      <div class="card"><h2>Détail par restaurant</h2><table><tr><th>Restaurant</th><th class="num">Cmd</th><th class="num">Livrées</th><th class="num">CA</th></tr>${rowsR||'<tr><td colspan=4 class="hint">Aucune donnée restaurant</td></tr>'}</table></div></div>`;
-  }
-
-  if(tab==='cli'){
-    const repeat=Object.values(byClient).filter(v=>v.length>1).length;
-    const top=Object.entries(byClient).map(([c,v])=>[c,v.length,v.filter(r=>isOk(r.statut)).reduce((s,r)=>s+r.frais,0)]).sort((a,b)=>b[1]-a[1]).slice(0,20);
-    html+=`<div class="kpis">${kpi('Clients uniques',fmt(Object.keys(byClient).length),'',true)}${kpi('Clients récurrents',fmt(repeat),pct(repeat,Object.keys(byClient).length).toFixed(0)+'% des clients',false)}${kpi('Commandes par client',(list.filter(r=>r.client).length/(Object.keys(byClient).length||1)).toFixed(1),'moyenne',false)}</div>`;
-    html+=`<div class="card"><h2>Top 20 clients</h2><table><tr><th>Client</th><th class="num">Commandes</th><th class="num">CA</th></tr>${top.map(t=>`<tr><td>${t[0]}</td><td class="num">${t[1]}</td><td class="num">${fmt(t[2])} DA</td></tr>`).join('')||'<tr><td colspan=3 class="hint">Colonne client absente</td></tr>'}</table></div>`;
-  }
-
-  if(tab==='alr'){
-    const alerts=[];
-    alerts.push(S.taux>=objOk?`<div class="alert ok">Taux de réussite ${S.taux.toFixed(1)}% : objectif ${objOk}% atteint.</div>`:`<div class="alert ko">Taux de réussite ${S.taux.toFixed(1)}% : sous l'objectif de ${objOk}%.</div>`);
-    const mNow=months[months.length-1]; const nowCount=mNow?byMonth[mNow].length:0;
-    if(objCmd&&mNow) alerts.push(nowCount>=objCmd?`<div class="alert ok">${mNow} : ${nowCount} commandes, objectif ${objCmd} atteint.</div>`:`<div class="alert warn">${mNow} : ${nowCount} commandes sur ${objCmd} (${pct(nowCount,objCmd).toFixed(0)}%).</div>`);
-    for(const [z,v] of Object.entries(byZone)){ const s=summary(v); if(v.length>=5&&s.taux<objOk) alerts.push(`<div class="alert warn">Zone ${z} : réussite ${s.taux.toFixed(0)}% (${v.length} commandes).</div>`); }
-    for(const [d,v] of Object.entries(byDriver)){ const s=summary(v); if(v.length>=5&&s.taux<70) alerts.push(`<div class="alert ko">Livreur ${d} : réussite ${s.taux.toFixed(0)}%.</div>`); }
-    html+=`<div class="card">${alerts.join('')}</div>`;
+  if(tab==='detail'){
+    html+=`<div class="card"><h2>Colis (${fmt(list.length)})</h2><table><tr><th>ID</th><th>Statut</th><th>Expéditeur</th><th>Client</th><th>Wilaya</th><th>Commune</th><th>Station</th><th>Sous-traitant</th><th class="num">Montant</th><th>Créé le</th><th>Livré le</th></tr>${list.slice(0,300).map(r=>`<tr><td>${r.id}</td><td>${r.statutLabel}</td><td>${r.expediteur}</td><td>${r.client}</td><td>${r.wilaya}</td><td>${r.commune}</td><td>${r.station}</td><td>${r.sous}</td><td class="num">${money(r.montant)}</td><td>${r.created?r.created.toLocaleDateString('fr-FR'):'N/A'}</td><td>${r.delivered?r.delivered.toLocaleDateString('fr-FR'):'N/A'}</td></tr>`).join('')}</table>${list.length>300?`<p class="hint">300 premiers affichés sur ${list.length}. Utilisez les filtres pour réduire la liste.</p>`:''}</div>`;
   }
 
   document.getElementById('content').innerHTML=html;
 }
 
-document.getElementById('file').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const reader=new FileReader();
-  if(/\.(xlsx|xls)$/i.test(f.name)){
-    reader.onload=ev=>{ const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true}); rows=parseCSV(fromSheet(wb.Sheets[wb.SheetNames[0]])); render(); };
-    reader.readAsArrayBuffer(f);
-  } else {
-    reader.onload=ev=>{ rows=parseCSV(ev.target.result); render(); };
-    reader.readAsText(f,'utf-8');
+document.getElementById('file').addEventListener('change',async e=>{
+  const files=[...e.target.files]; if(!files.length) return;
+  let all=[]; const errs=[];
+  for(const f of files){
+    try{ const buf=await f.arrayBuffer(); const parsed=parseWorkbook(new Uint8Array(buf),f.name); if(!parsed.length) errs.push(f.name); all=all.concat(parsed); }
+    catch(err){ errs.push(f.name); }
   }
+  rows=all;
+  document.getElementById('banner').innerHTML=`<div class="banner">${files.length} fichier(s) importé(s), ${fmt(all.length)} colis lus. Données réelles Ecotrack.${errs.length?` Non lus : ${errs.join(', ')}`:''}</div>`;
+  render();
 });
 
 function loadDemo(){
-  const zones=['Meftah Centre','Meftah Dehors','Beaulieu'], drivers=['Karim','Yacine','Amine','Sofiane','Nabil'];
-  const restos=['Restaurant A','Restaurant B','Pizzeria C'], statuts=['livree','livree','livree','livree','annulee','echec'];
-  const motifs=['client absent','adresse introuvable','refus','retard'];
-  const start=new Date(); start.setDate(start.getDate()-90); const out=[];
-  for(let i=0;i<900;i++){
-    const d=new Date(start.getTime()+Math.random()*90*86400000);
-    const z=zones[Math.floor(Math.random()*3)]; const st=statuts[Math.floor(Math.random()*statuts.length)];
-    out.push({date:d,zone:z,statut:st,frais:z==='Meftah Centre'?150:z==='Meftah Dehors'?200:250,
-      livreur:drivers[Math.floor(Math.random()*5)],restaurant:Math.random()<0.4?restos[Math.floor(Math.random()*3)]:'',
-      client:'C'+Math.floor(Math.random()*300),cout:z==='Meftah Centre'?80:z==='Meftah Dehors'?110:140,
-      motif:isFail(st)?motifs[Math.floor(Math.random()*motifs.length)]:'',delai:20+Math.floor(Math.random()*50)});
+  const W=['Alger','Oran','Boumerdès','Blida','Sétif','Tiaret'], S=['09.01 Agence Blida','35.01 Agence Boumerdes','48.1 Agence Oued Rhiou'], SUB=['Wasy','STOP DESK'];
+  const T=[['transit','En transit'],['valider','À valider'],['livre','Livrée, non encaissée'],['retour','À retourner']];
+  const out=[]; const base=new Date(); base.setDate(base.getDate()-30);
+  for(let i=0;i<240;i++){
+    const t=T[Math.floor(Math.random()*T.length)]; const c=new Date(base.getTime()+Math.random()*30*864e5);
+    const d=t[0]==='livre'?new Date(c.getTime()+(10+Math.random()*60)*36e5):null;
+    out.push({statut:t[0],statutLabel:t[1],id:'DEMO'+(1000+i),expediteur:'Démo',client:'Client démo',wilaya:W[Math.floor(Math.random()*W.length)],commune:'',
+      station:S[Math.floor(Math.random()*S.length)],sous:SUB[Math.floor(Math.random()*2)],montant:Math.random()<0.1?null:1000+Math.floor(Math.random()*12000),
+      created:c,delivered:d,dispatched:null,delai:d?(d-c)/36e5:null,remarque:'',source:'démo'});
   }
-  rows=out; render();
+  rows=out;
+  document.getElementById('banner').innerHTML='<div class="banner"><b>DONNÉES DE DÉMONSTRATION FICTIVES</b> : ne pas utiliser comme résultats réels.</div>';
+  render();
 }
-
 render();
 </script>
 </body>
