@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BI MT Delivery</title>
+<style>
+  :root { --blue:#0b3d91; --gold:#d4a017; --bg:#f5f7fb; --card:#fff; --text:#1d2433; --muted:#6b7280; --ok:#16a34a; --ko:#dc2626; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--blue); color:#fff; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  header h1 { margin:0; font-size:20px; }
+  header h1 span { color:var(--gold); }
+  main { padding:20px 24px; max-width:1200px; margin:0 auto; }
+  .bar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:20px; }
+  .btn { background:var(--gold); color:#1d2433; border:0; padding:9px 16px; border-radius:8px; font-weight:600; cursor:pointer; }
+  .btn.alt { background:#fff; color:var(--blue); border:1px solid var(--blue); }
+  select, input[type=date] { padding:8px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
+  .kpi { background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); border-top:4px solid var(--blue); }
+  .kpi.gold { border-top-color:var(--gold); }
+  .kpi .label { color:var(--muted); font-size:13px; }
+  .kpi .value { font-size:26px; font-weight:700; margin-top:6px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:800px) { .grid { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .card h2 { font-size:15px; margin:0 0 12px; color:var(--blue); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px; border-bottom:1px solid #e5e7eb; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }
+  td.num, th.num { text-align:right; }
+  .bar-row { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:14px; }
+  .bar-row .name { width:130px; flex-shrink:0; }
+  .bar-row .track { flex:1; background:#e5e7eb; border-radius:6px; height:14px; overflow:hidden; }
+  .bar-row .fill { background:var(--blue); height:100%; }
+  .bar-row .val { width:90px; text-align:right; font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; color:#fff; }
+  .hint { color:var(--muted); font-size:13px; }
+  .empty { text-align:center; padding:40px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>BI <span>MT Delivery</span></h1>
+  <div>
+    <input type="file" id="file" accept=".csv,.xlsx,.xls,text/csv" hidden>
+    <button class="btn" onclick="document.getElementById('file').click()">Importer un CSV</button>
+    <button class="btn alt" onclick="loadDemo()">Données de démo</button>
+  </div>
+</header>
+
+<main>
+  <div class="bar">
+    <label>Zone :
+      <select id="fZone" onchange="render()"><option value="">Toutes</option></select>
+    </label>
+    <label>Du : <input type="date" id="fFrom" onchange="render()"></label>
+    <label>Au : <input type="date" id="fTo" onchange="render()"></label>
+    <span class="hint" id="info"></span>
+  </div>
+
+  <div id="content"><div class="empty">Importez un fichier CSV ou cliquez sur « Données de démo ».</div></div>
+
+  <p class="hint" style="margin-top:24px">
+    Colonnes attendues (noms souples) : <b>date</b>, <b>zone</b>, <b>statut</b> (livree / annulee / echec), <b>frais</b> (DA), <b>livreur</b>, <b>restaurant</b> (optionnel).
+    Séparateur : virgule ou point-virgule.
+  </p>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let rows = [];
+
+const COL = {
+  date: ['date','jour','created','date_commande'],
+  zone: ['zone','secteur','region'],
+  statut: ['statut','status','etat'],
+  frais: ['frais','montant','prix','fee','total'],
+  livreur: ['livreur','driver','coursier'],
+  restaurant: ['restaurant','partenaire','shop','marchand']
+};
+
+function norm(s){ return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_'); }
+
+function findCol(headers, keys){
+  const h = headers.map(norm);
+  for (const k of keys){ const i = h.findIndex(x => x === k || x.includes(k)); if (i >= 0) return i; }
+  return -1;
+}
+
+function parseCSV(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  const sep = lines[0].split(';').length > lines[0].split(',').length ? ';' : ',';
+  const headers = lines[0].split(sep);
+  const idx = {};
+  for (const k in COL) idx[k] = findCol(headers, COL[k]);
+  return lines.slice(1).map(l => {
+    const c = l.split(sep);
+    const g = k => idx[k] >= 0 ? (c[idx[k]] || '').trim() : '';
+    const d = new Date(g('date'));
+    return {
+      date: isNaN(d) ? null : d,
+      zone: g('zone') || 'Non renseignée',
+      statut: norm(g('statut')) || 'inconnu',
+      frais: parseFloat((g('frais')||'0').replace(',','.').replace(/[^\d.\-]/g,'')) || 0,
+      livreur: g('livreur') || 'Non renseigné',
+      restaurant: g('restaurant') || ''
+    };
+  }).filter(r => r.date);
+}
+
+function isOk(s){ return /livr|done|delivered|succes/.test(s); }
+function isFail(s){ return /echec|annul|retour|cancel|fail/.test(s); }
+
+function fmt(n){ return Math.round(n).toLocaleString('fr-FR'); }
+function fmtDate(d){ return d.toLocaleDateString('fr-FR'); }
+
+function filtered(){
+  const z = document.getElementById('fZone').value;
+  const f = document.getElementById('fFrom').value;
+  const t = document.getElementById('fTo').value;
+  return rows.filter(r =>
+    (!z || r.zone === z) &&
+    (!f || r.date >= new Date(f)) &&
+    (!t || r.date <= new Date(t + 'T23:59:59'))
+  );
+}
+
+function groupBy(list, keyFn){
+  const m = {};
+  for (const r of list){
+    const k = keyFn(r);
+    if (!m[k]) m[k] = {n:0, ok:0, ko:0, ca:0};
+    m[k].n++;
+    if (isOk(r.statut)) { m[k].ok++; m[k].ca += r.frais; }
+    if (isFail(r.statut)) m[k].ko++;
+  }
+  return m;
+}
+
+function bars(map, title){
+  const entries = Object.entries(map).sort((a,b)=>b[1].n-a[1].n);
+  const max = Math.max(1, ...entries.map(e=>e[1].n));
+  return `<div class="card"><h2>${title}</h2>` + (entries.length ? entries.map(([k,v]) =>
+    `<div class="bar-row"><div class="name" title="${k}">${k}</div>
+      <div class="track"><div class="fill" style="width:${(v.n/max*100).toFixed(1)}%"></div></div>
+      <div class="val">${v.n} cmd</div></div>`).join('') : '<p class="hint">Aucune donnée</p>') + `</div>`;
+}
+
+function render(){
+  const list = filtered();
+  const zones = [...new Set(rows.map(r=>r.zone))].sort();
+  const sel = document.getElementById('fZone');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Toutes</option>' + zones.map(z=>`<option ${z===cur?'selected':''}>${z}</option>`).join('');
+
+  if (!rows.length){ return; }
+  document.getElementById('info').textContent = `${list.length} commande(s) sur ${rows.length}`;
+
+  const total = list.length;
+  const ok = list.filter(r=>isOk(r.statut)).length;
+  const ko = list.filter(r=>isFail(r.statut)).length;
+  const ca = list.filter(r=>isOk(r.statut)).reduce((s,r)=>s+r.frais,0);
+  const panier = ok ? ca/ok : 0;
+  const taux = total ? (ok/total*100) : 0;
+  const livreurs = new Set(list.map(r=>r.livreur)).size;
+
+  const byDay = groupBy(list, r => r.date.toISOString().slice(0,10));
+  const days = Object.keys(byDay).sort();
+  const byZone = groupBy(list, r=>r.zone);
+  const byDriver = groupBy(list, r=>r.livreur);
+  const byResto = groupBy(list.filter(r=>r.restaurant), r=>r.restaurant);
+
+  const maxDay = Math.max(1, ...days.map(d=>byDay[d].n));
+  const trend = days.length ? `<div class="card"><h2>Volume par jour</h2>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:160px">
+    ${days.map(d=>`<div title="${fmtDate(new Date(d))} : ${byDay[d].n} cmd" style="flex:1;background:var(--blue);height:${(byDay[d].n/maxDay*100).toFixed(1)}%;min-width:4px;border-radius:3px 3px 0 0"></div>`).join('')}
+    </div>
+    <div class="hint" style="display:flex;justify-content:space-between;margin-top:6px"><span>${fmtDate(new Date(days[0]))}</span><span>${fmtDate(new Date(days[days.length-1]))}</span></div>
+  </div>` : '';
+
+  const zoneRows = Object.entries(byZone).sort((a,b)=>b[1].ca-a[1].ca).map(([z,v])=>{
+    const tx = v.n ? (v.ok/v.n*100).toFixed(0) : 0;
+    return `<tr><td>${z}</td><td class="num">${v.n}</td><td class="num">${v.ok}</td><td class="num">${tx}%</td><td class="num">${fmt(v.ca)} DA</td></tr>`;
+  }).join('');
+
+  const driverRows = Object.entries(byDriver).sort((a,b)=>b[1].n-a[1].n).slice(0,15).map(([d,v])=>{
+    const tx = v.n ? (v.ok/v.n*100).toFixed(0) : 0;
+    return `<tr><td>${d}</td><td class="num">${v.n}</td><td class="num">${v.ok}</td><td class="num">${v.ko}</td><td class="num">${tx}%</td></tr>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="label">Commandes</div><div class="value">${fmt(total)}</div></div>
+      <div class="kpi gold"><div class="label">Taux de réussite</div><div class="value">${taux.toFixed(1)}%</div></div>
+      <div class="kpi"><div class="label">Chiffre d'affaires livré</div><div class="value">${fmt(ca)} DA</div></div>
+      <div class="kpi gold"><div class="label">Panier moyen</div><div class="value">${fmt(panier)} DA</div></div>
+      <div class="kpi"><div class="label">Échecs / annulations</div><div class="value">${fmt(ko)}</div></div>
+      <div class="kpi gold"><div class="label">Livreurs actifs</div><div class="value">${livreurs}</div></div>
+    </div>
+
+    ${trend}
+
+    <div class="grid" style="margin-top:16px">
+      ${bars(byZone, 'Commandes par zone')}
+      <div class="card"><h2>Performance par zone</h2>
+        <table><tr><th>Zone</th><th class="num">Cmd</th><th class="num">Livrées</th><th class="num">Réussite</th><th class="num">CA</th></tr>${zoneRows}</table>
+      </div>
+      <div class="card" style="grid-column:1/-1"><h2>Top livreurs</h2>
+        <table><tr><th>Livreur</th><th class="num">Cmd</th><th class="num">Livrées</th><th class="num">Échecs</th><th class="num">Réussite</th></tr>${driverRows}</table>
+      </div>
+      ${Object.keys(byResto).length ? bars(byResto, 'Commandes par restaurant (MT Food)') : ''}
+    </div>`;
+}
+
+document.getElementById('file').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  if (/\.(xlsx|xls)$/i.test(f.name)) {
+    reader.onload = ev => {
+      const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+      const csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ',' });
+      rows = parseCSV(csv); render();
+    };
+    reader.readAsArrayBuffer(f);
+  } else {
+    reader.onload = ev => { rows = parseCSV(ev.target.result); render(); };
+    reader.readAsText(f, 'utf-8');
+  }
+});
+
+function loadDemo(){
+  const zones = ['Meftah Centre','Meftah Dehors','Beaulieu'];
+  const drivers = ['Karim','Yacine','Amine','Sofiane','Nabil'];
+  const restos = ['Restaurant A','Restaurant B','Pizzeria C'];
+  const statuts = ['livree','livree','livree','livree','annulee','echec'];
+  const out = [];
+  const start = new Date(); start.setDate(start.getDate()-60);
+  for (let i=0;i<600;i++){
+    const d = new Date(start.getTime() + Math.random()*60*86400000);
+    const z = zones[Math.floor(Math.random()*zones.length)];
+    const fee = z==='Meftah Centre'?150:z==='Meftah Dehors'?200:250;
+    out.push({
+      date: d,
+      zone: z,
+      statut: statuts[Math.floor(Math.random()*statuts.length)],
+      frais: fee,
+      livreur: drivers[Math.floor(Math.random()*drivers.length)],
+      restaurant: Math.random()<0.4 ? restos[Math.floor(Math.random()*restos.length)] : ''
+    });
+  }
+  rows = out.map(r=>({...r, statut: r.statut}));
+  render();
+}
+</script>
+</body>
+</html>
