@@ -74,7 +74,10 @@
 </main>
 
 <script>
-let rows=[]; let tab='vue';
+let rows=[]; let tab='vue'; let statsWil=null;
+// Référence marge par wilaya (DA par colis) = prix MT − prix sous-traitant (ALGER SP 25)
+const MARGE={"Adrar":300,"Chlef":200,"Laghouat":200,"Oum El Bouaghi":150,"Batna":150,"Béjaïa":150,"Biskra":200,"Béchar":450,"Blida":-50,"Bouira":250,"Tamanrasset":350,"Tébessa":150,"Tlemcen":150,"Tiaret":150,"Tizi Ouzou":250,"Alger":150,"Djelfa":250,"Jijel":150,"Sétif":100,"Saïda":150,"Skikda":150,"Sidi Bel Abbès":150,"Annaba":150,"Guelma":150,"Constantine":150,"Médéa":250,"Mostaganem":150,"M'Sila":150,"Mascara":150,"Ouargla":100,"Oran":100,"El Bayadh":400,"Illizi":50,"Bordj Bou Arréridj":250,"Boumerdès":200,"El Tarf":100,"Tindouf":350,"Tissemsilt":100,"El Oued":100,"Khenchela":100,"Souk Ahras":100,"Tipaza":150,"Mila":100,"Aïn Defla":250,"Naâma":250,"Aïn Témouchent":100,"Ghardaïa":100,"Relizane":100,"Timimoun":300,"Bordj Badji Mokhtar":200,"Ouled Djellal":100,"Béni Abbès":150,"In Salah":300,"In Guezzam":50,"Touggourt":100,"Djanet":null,"El M'Ghair":100,"El Meniaa":200};
+MARGE["Beni Abbes"]=MARGE["Béni Abbès"]; MARGE["Bordj Bou Arreridj"]=MARGE["Bordj Bou Arréridj"]; MARGE["Saida"]=MARGE["Saïda"];
 const STATUTS={
   transit:{label:'En transit',color:'#2563eb'},
   valider:{label:'À valider',color:'#7c3aed'},
@@ -124,6 +127,17 @@ function parseWorkbook(data, name){
       remarque:txt(get(r,'Remarque')), source:name
     };
   }).filter(r=>r.id);
+}
+
+function parseStats(data){
+  const wb=XLSX.read(data,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const hi=aoa.findIndex(r=>r.some(c=>txt(c)==='Wilayas'));
+  if(hi<0) return {};
+  const h=aoa[hi].map(txt); const wi=h.indexOf('Wilayas'); const li=h.findIndex(x=>/livr/i.test(x));
+  const out={};
+  for(const r of aoa.slice(hi+1)){ const w=txt(r[wi]); if(w&&li>=0) out[w]=Number(r[li])||0; }
+  return out;
 }
 
 function filtered(){
@@ -230,10 +244,13 @@ function render(){
     html+=`<div class="kpis">${kpi('Colis retournés',fmt(rt.length),'fichiers retours (en transit et à retourner)',true)}${kpi('Expéditeurs concernés',Object.keys(g).length,'')}</div>`+bars(g,'Colis retournés par expéditeur',v=>v.length,'colis');
   }
   if(tab==='mrg'){
-    const lv=list.filter(r=>r.statut==='livre'); const wc=lv.filter(r=>r.cout!=null&&r.montant!=null);
-    const marge=wc.reduce((s,r)=>s+(r.montant-r.cout),0);
-    html+=`<div class="kpis">${kpi('Marge gagnée',wc.length?money(marge):'N/A',wc.length?`${wc.length} colis livrés avec coût`:'coût absent des fichiers',true)}${kpi('Montant livré',money(lv.reduce((s,r)=>s+(r.montant||0),0)),`${lv.length} colis livrés`)}</div>`;
-    if(!wc.length) html+=`<p class="hint">La marge ne peut pas être calculée : aucun des fichiers importés ne contient de colonne coût de livraison. Envoyez-moi un export qui contient le coût par colis, et j'ajoute le calcul.</p>`;
+    const cnt=statsWil||Object.fromEntries(Object.entries(groupBy(list.filter(r=>r.statut==='livre'),r=>r.wilaya)).map(([w,v])=>[w,v.length]));
+    const det=Object.entries(cnt).map(([w,n])=>{const m=MARGE[w]; return {w,n,m:(m===undefined?null:m),tot:(m==null?null:m*n)};});
+    const ok=det.filter(x=>x.tot!=null); const total=ok.reduce((s,x)=>s+x.tot,0); const colis=ok.reduce((s,x)=>s+x.n,0);
+    const sansRef=det.filter(x=>x.m==null&&x.n>0).length;
+    html+=`<div class="kpis">${kpi('Marge gagnée',ok.length?fmt(total)+' DA':'N/A',`${fmt(colis)} colis avec marge connue`,true)}${kpi('Wilayas sans marge',sansRef,'colis non calculables')}</div>`;
+    html+=`<div class="card"><h2>Marge gagnée par wilaya</h2><table><tr><th>Wilaya</th><th class="num">Colis livrés</th><th class="num">Marge / colis</th><th class="num">Marge gagnée</th></tr>${det.sort((a,b)=>(b.tot??-1e9)-(a.tot??-1e9)).map(x=>`<tr><td>${x.w}</td><td class="num">${fmt(x.n)}</td><td class="num">${x.m==null?'N/A':fmt(x.m)+' DA'}</td><td class="num">${x.tot==null?'N/A':fmt(x.tot)+' DA'}</td></tr>`).join('')}</table></div>`;
+    html+=`<p class="hint">Source : référence « prix MT − prix sous-traitant (ALGER SP 25) ». Importez le fichier « Statistiques » pour utiliser les colis livrés par wilaya de Ecotrack.</p>`;
   }
 
   document.getElementById('content').innerHTML=html;
@@ -243,10 +260,14 @@ document.getElementById('file').addEventListener('change',async e=>{
   const files=[...e.target.files]; if(!files.length) return;
   let all=[]; const errs=[];
   for(const f of files){
-    try{ const buf=await f.arrayBuffer(); const parsed=parseWorkbook(new Uint8Array(buf),f.name); if(!parsed.length) errs.push(f.name); all=all.concat(parsed); }
+    try{
+      const data=new Uint8Array(await f.arrayBuffer());
+      if(/statist/i.test(f.name)){ const st=parseStats(data); if(Object.keys(st).length){ statsWil=st; continue; } }
+      const parsed=parseWorkbook(data,f.name); if(!parsed.length) errs.push(f.name); all=all.concat(parsed);
+    }
     catch(err){ errs.push(f.name); }
   }
-  rows=all;
+  if(all.length) rows=all;
   document.getElementById('banner').innerHTML=`<div class="banner">${files.length} fichier(s) importé(s), ${fmt(all.length)} colis lus. Données réelles Ecotrack.${errs.length?` Non lus : ${errs.join(', ')}`:''}</div>`;
   render();
 });
