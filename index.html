@@ -81,7 +81,7 @@ const STATUTS={
   livre:{label:'Livrée, non encaissée',color:'#15803d'},
   retour:{label:'À retourner',color:'#b45309'}
 };
-const TABS=[['vue','Vue d’ensemble'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
+const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
 
 const fmt=n=>Math.round(n).toLocaleString('fr-FR');
 const money=v=>v==null?'N/A':fmt(v)+' DA';
@@ -105,6 +105,7 @@ function parseWorkbook(data, name){
   if(hi<0) return [];
   const h=aoa[hi].map(txt);
   const get=(r,k)=>{ const i=h.indexOf(k); return i>=0?r[i]:null; };
+  const getAny=(r,ks)=>{ for(const k of ks){ const v=get(r,k); if(v!=null&&txt(v)!=='') return v; } return null; };
   const statut=statutFromName(name);
   return aoa.slice(hi+1).filter(r=>r.some(c=>c!=null&&txt(c)!=='')).map(r=>{
     const created=dateOf(get(r,'Date création')||get(r,'Crée le'));
@@ -117,6 +118,8 @@ function parseWorkbook(data, name){
       station:txt(get(r,'Station de livraison'))||txt(get(r,'Station d\'expédition'))||'Non renseignée',
       sous:txt(get(r,'Sous traitant'))||'Non renseigné',
       montant:montant(get(r,'Total')), created, delivered, dispatched,
+      cout:montant(getAny(r,['Coût','Cout','Coût livraison','Cout livraison','Tarif','Frais livraison','Prix livraison'])),
+      isRetour:/retour/i.test(name),
       delai: created&&delivered ? (delivered-created)/3600000 : null,
       remarque:txt(get(r,'Remarque')), source:name
     };
@@ -216,6 +219,21 @@ function render(){
 
   if(tab==='detail'){
     html+=`<div class="card"><h2>Colis (${fmt(list.length)})</h2><table><tr><th>ID</th><th>Statut</th><th>Expéditeur</th><th>Client</th><th>Wilaya</th><th>Commune</th><th>Station</th><th>Sous-traitant</th><th class="num">Montant</th><th>Créé le</th><th>Livré le</th></tr>${list.slice(0,300).map(r=>`<tr><td>${r.id}</td><td>${r.statutLabel}</td><td>${r.expediteur}</td><td>${r.client}</td><td>${r.wilaya}</td><td>${r.commune}</td><td>${r.station}</td><td>${r.sous}</td><td class="num">${money(r.montant)}</td><td>${r.created?r.created.toLocaleDateString('fr-FR'):'N/A'}</td><td>${r.delivered?r.delivered.toLocaleDateString('fr-FR'):'N/A'}</td></tr>`).join('')}</table>${list.length>300?`<p class="hint">300 premiers affichés sur ${list.length}. Utilisez les filtres pour réduire la liste.</p>`:''}</div>`;
+  }
+
+  if(tab==='wil'){
+    const dl=list.filter(r=>r.statut==='livre'); const g=groupBy(dl,r=>r.wilaya);
+    html+=`<div class="kpis">${kpi('Colis livrés',fmt(dl.length),'livrés non encaissés',true)}${kpi('Wilayas touchées',Object.keys(g).length,'')}</div>`+bars(g,'Colis livrés par wilaya',v=>v.length,'colis');
+  }
+  if(tab==='ret'){
+    const rt=list.filter(r=>r.isRetour); const g=groupBy(rt,r=>r.expediteur||'Non renseigné');
+    html+=`<div class="kpis">${kpi('Colis retournés',fmt(rt.length),'fichiers retours (en transit et à retourner)',true)}${kpi('Expéditeurs concernés',Object.keys(g).length,'')}</div>`+bars(g,'Colis retournés par expéditeur',v=>v.length,'colis');
+  }
+  if(tab==='mrg'){
+    const lv=list.filter(r=>r.statut==='livre'); const wc=lv.filter(r=>r.cout!=null&&r.montant!=null);
+    const marge=wc.reduce((s,r)=>s+(r.montant-r.cout),0);
+    html+=`<div class="kpis">${kpi('Marge gagnée',wc.length?money(marge):'N/A',wc.length?`${wc.length} colis livrés avec coût`:'coût absent des fichiers',true)}${kpi('Montant livré',money(lv.reduce((s,r)=>s+(r.montant||0),0)),`${lv.length} colis livrés`)}</div>`;
+    if(!wc.length) html+=`<p class="hint">La marge ne peut pas être calculée : aucun des fichiers importés ne contient de colonne coût de livraison. Envoyez-moi un export qui contient le coût par colis, et j'ajoute le calcul.</p>`;
   }
 
   document.getElementById('content').innerHTML=html;
