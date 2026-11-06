@@ -1,0 +1,24 @@
+name = "mt-cash"
+main = "src/worker.mjs"
+compatibility_date = "2026-01-01"
+
+# Interface statique (dossier public/). Les appels /api/* passent d'abord par le Worker.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+# Journal financier : un Durable Object SQLite (une seule instance, transactions synchrones).
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "LedgerDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LedgerDO"]
+
+# Les migrations SQL sont importées comme texte dans le bundle.
+[[rules]]
+type = "Text"
+globs = ["**/*.sql"]
+fallthrough = true

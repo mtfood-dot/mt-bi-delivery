@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>MT Delivery — Gestion de caisse</title>
+  <meta name="theme-color" content="#1553A4">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="ecran-auth" class="auth" hidden></div>
+
+  <div id="application" hidden>
+    <aside class="menu" aria-label="Navigation principale">
+      <div class="marque">
+        <span class="logo">MT</span>
+        <div><strong>MT Delivery</strong><small>Gestion de caisse</small></div>
+      </div>
+      <nav id="navigation"></nav>
+    </aside>
+
+    <header class="barre">
+      <button id="bouton-menu" class="btn-discret" type="button" aria-label="Ouvrir le menu">☰</button>
+      <h1 id="titre-page"></h1>
+      <div class="barre-droite">
+        <button id="bascule-theme" class="btn-discret" type="button" aria-label="Changer le thème">🌓</button>
+        <span id="utilisateur" class="utilisateur"></span>
+        <button id="deconnexion" class="btn-secondaire" type="button">Se déconnecter</button>
+      </div>
+    </header>
+
+    <main id="contenu" class="contenu" aria-live="polite"></main>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="assertive"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

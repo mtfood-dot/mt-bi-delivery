@@ -1,0 +1,13 @@
+{
+  "name": "mt-cash",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MT Delivery — Gestion de caisse et trésorerie",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test --disable-warning=ExperimentalWarning test/finance.test.js test/modules.test.js test/reports.test.js test/api.test.js test/storage.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
