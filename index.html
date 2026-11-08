@@ -87,7 +87,7 @@ const STATUTS={
   livre:{label:'Livrée, non encaissée',color:'#15803d'},
   retour:{label:'À retourner',color:'#b45309'}
 };
-const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['pay','Marge par colis'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
+const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['pay','Marge par colis'],['cmp','Comparer décharges'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
 
 const fmt=n=>Math.round(n).toLocaleString('fr-FR');
 const money=v=>v==null?'N/A':fmt(v)+' DA';
@@ -155,6 +155,50 @@ function parsePaiements(data){
   }));
 }
 
+async function readDecharge(file){
+  const data=new Uint8Array(await file.arrayBuffer());
+  const wb=XLSX.read(data,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const hi=aoa.findIndex(r=>r.some(c=>/^(Reference|Tracking)$/i.test(txt(c))) && r.some(c=>/montant/i.test(txt(c))));
+  if(hi<0) return null;
+  const h=aoa[hi].map(c=>txt(c));
+  const ki=h.findIndex(x=>/^(Reference|Tracking)$/i.test(x)); const mi=h.findIndex(x=>/montant/i.test(x));
+  const out={};
+  for(const r of aoa.slice(hi+1)){ const k=txt(r[ki]); if(k) out[k]=montant(r[mi])||0; }
+  return out;
+}
+async function compareDecharges(){
+  const out=document.getElementById('cmpOut');
+  const fa=document.getElementById('cmpA').files[0], fb=document.getElementById('cmpB').files[0];
+  if(!fa||!fb){ out.innerHTML='<div class="alert warn">Choisissez les deux fichiers.</div>'; return; }
+  let A,B;
+  try{ A=await readDecharge(fa); B=await readDecharge(fb); }catch(e){ A=B=null; }
+  if(!A||!B){ out.innerHTML='<div class="alert ko">Colonnes « Reference/Tracking » ou « Montant » introuvables dans un des fichiers.</div>'; return; }
+  const keys=[...new Set([...Object.keys(A),...Object.keys(B)])];
+  const lines=keys.map(k=>{
+    const inA=Object.prototype.hasOwnProperty.call(A,k), inB=Object.prototype.hasOwnProperty.call(B,k);
+    const a=inA?A[k]:null, b=inB?B[k]:null;
+    const st=inA&&inB?(a===b?'Identique':'Montant différent'):(inA?'Seulement dans 1':'Seulement dans 2');
+    return {k,a,b,st};
+  });
+  const cnt=s=>lines.filter(x=>x.st===s);
+  const sum=(arr,f)=>arr.reduce((s,x)=>s+(x[f]||0),0);
+  const onlyA=cnt('Seulement dans 1'), onlyB=cnt('Seulement dans 2'), diff=cnt('Montant différent');
+  const sA=sum(lines.filter(x=>x.a!=null),'a'), sB=sum(lines.filter(x=>x.b!=null),'b');
+  const color={'Identique':'var(--ok)','Montant différent':'var(--warn)','Seulement dans 1':'var(--ko)','Seulement dans 2':'var(--ko)'};
+  out.innerHTML=`<div class="kpis">
+    ${kpi('Total décharge 1',money(sA),`${fmt(Object.keys(A).length)} colis`)}
+    ${kpi('Total décharge 2',money(sB),`${fmt(Object.keys(B).length)} colis`)}
+    ${kpi('Écart total',money(sB-sA),'décharge 2 − décharge 1',true)}
+    ${kpi('Seulement dans 1',fmt(onlyA.length),money(sum(onlyA,'a')))}
+    ${kpi('Seulement dans 2',fmt(onlyB.length),money(sum(onlyB,'b')))}
+    ${kpi('Montant différent',fmt(diff.length),'entre les deux')}
+  </div>
+  <div class="card"><h2>Détail par colis</h2><table><tr><th>Reference</th><th>Statut</th><th class="num">Montant 1</th><th class="num">Montant 2</th></tr>
+  ${lines.map(x=>`<tr><td>${x.k}</td><td><span class="pill" style="background:${color[x.st]}">${x.st}</span></td><td class="num">${x.a==null?'—':money(x.a)}</td><td class="num">${x.b==null?'—':money(x.b)}</td></tr>`).join('')}
+  </table></div>`;
+}
+
 function filtered(){
   const st=document.getElementById('fStation').value, wi=document.getElementById('fWilaya').value, su=document.getElementById('fSub').value;
   return rows.filter(r=>(!st||r.station===st)&&(!wi||r.wilaya===wi)&&(!su||r.sous===su));
@@ -191,7 +235,7 @@ function render(){
   const set=(sel,vals,label)=>{ const c=sel.value; sel.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option ${v===c?'selected':''}>${v}</option>`).join(''); };
   set(stSel,[...new Set(rows.map(r=>r.station))].sort(),'Toutes'); set(wiSel,[...new Set(rows.map(r=>r.wilaya))].sort(),'Toutes'); set(suSel,[...new Set(rows.map(r=>r.sous))].sort(),'Tous');
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('');
-  if(!rows.length && !paiements.length && !statsWil) return;
+  if(!rows.length && !paiements.length && !statsWil && tab!=='cmp') return;
   const list=filtered(), S=summary(list);
   document.getElementById('info').textContent=`${S.n} colis affichés sur ${rows.length}`;
   const byW=groupBy(list,r=>r.wilaya), byS=groupBy(list,r=>r.station), bySub=groupBy(list,r=>r.sous);
@@ -267,6 +311,9 @@ function render(){
       html+=`<div class="kpis">${kpi('Marge sur les colis',fmt(tot)+' DA',`${ok.length} colis comparés à notre grille`,true)}${kpi('Colis sans prix MT',det.length-ok.length,'à vérifier')}</div>`;
       html+=`<div class="card"><h2>Détail par colis</h2><table><tr><th>Tracking</th><th>Wilaya</th><th>Prestation</th><th class="num">Prix retenu</th><th class="num">Notre prix</th><th class="num">Marge</th></tr>${det.map(x=>`<tr><td>${x.trk}</td><td>${x.wil}</td><td>${x.prest}</td><td class="num">${fmt(x.fee)} DA</td><td class="num">${x.price==null?'N/A':fmt(x.price)+' DA'}</td><td class="num">${x.marge==null?'N/A':fmt(x.marge)+' DA'}</td></tr>`).join('')}</table></div>`;
     }
+  }
+  if(tab==='cmp'){
+    html+=`<div class="card"><h2>Comparer deux décharges</h2><p class="hint">Importez deux fichiers Excel ou CSV contenant les colonnes « Reference » (ou « Tracking ») et « Montant ». Le fichier 1 sert de référence.</p><div class="toolbar"><label>Décharge 1 <input type="file" id="cmpA" accept=".xlsx,.xls,.csv"></label><label>Décharge 2 <input type="file" id="cmpB" accept=".xlsx,.xls,.csv"></label><button class="btn" onclick="compareDecharges()">Comparer les décharges</button></div></div><div id="cmpOut"></div>`;
   }
   if(tab==='mrg'){
     const cnt=statsWil||Object.fromEntries(Object.entries(groupBy(list.filter(r=>r.statut==='livre'),r=>r.wilaya)).map(([w,v])=>[w,v.length]));
