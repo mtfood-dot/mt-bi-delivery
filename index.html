@@ -363,10 +363,9 @@ function render(){
         const dD=(m[0]!=null&&a[0]!=null)?m[0]-a[0]:null; const dS=(m[1]!=null&&a[1]!=null)?m[1]-a[1]:null;
         return {w,m0:m[0],m1:m[1],a0:a[0],a1:a[1],dD,dS};}).sort((x,y)=>(y.dD??-1e9)-(x.dD??-1e9));
       const fmtD=v=>v==null?'N/A':(v>0?'+':'')+fmt(v)+' DA';
-      const pct=(d,a)=>d==null||!a?'N/A':(d>0?'+':'')+(d/a*100).toFixed(1)+' %';
       const plus=rowsP.filter(x=>x.dD>0).length, moins=rowsP.filter(x=>x.dD<0).length;
       html+=`<div class="kpis">${kpi('Wilayas où nous sommes plus chers',plus,'à domicile',true)}${kpi('Wilayas où nous sommes moins chers',moins,'à domicile')}</div>`;
-      html+=`<div class="card"><h2>Écart par wilaya (notre prix − Anderson)</h2><table><tr><th>Wilaya</th><th class="num">MT domicile</th><th class="num">Anderson domicile</th><th class="num">Écart domicile</th><th class="num">% gagné (domicile)</th><th class="num">MT stop desk</th><th class="num">Anderson bureau</th><th class="num">Écart bureau</th></tr>${rowsP.map(x=>`<tr><td>${x.w}</td><td class="num">${money(x.m0)}</td><td class="num">${money(x.a0)}</td><td class="num">${fmtD(x.dD)}</td><td class="num">${pct(x.dD,x.a0)}</td><td class="num">${money(x.m1)}</td><td class="num">${money(x.a1)}</td><td class="num">${fmtD(x.dS)}</td></tr>`).join('')}</table></div>`;
+      html+=`<div class="card"><h2>Écart par wilaya (notre prix − Anderson)</h2><table><tr><th>Wilaya</th><th class="num">MT domicile</th><th class="num">Anderson domicile</th><th class="num">Écart domicile</th><th class="num">MT stop desk</th><th class="num">Anderson bureau</th><th class="num">Écart bureau</th></tr>${rowsP.map(x=>`<tr><td>${x.w}</td><td class="num">${money(x.m0)}</td><td class="num">${money(x.a0)}</td><td class="num">${fmtD(x.dD)}</td><td class="num">${money(x.m1)}</td><td class="num">${money(x.a1)}</td><td class="num">${fmtD(x.dS)}</td></tr>`).join('')}</table></div>`;
     }
   }
   if(tab==='cmp'){
