@@ -361,7 +361,7 @@ function render(){
     } else {
       const rowsP=Object.keys(ANDERSON).map(w=>{const m=MTPRIX[w]||[null,null]; const a=ANDERSON[w];
         const dD=(m[0]!=null&&a[0]!=null)?m[0]-a[0]:null; const dS=(m[1]!=null&&a[1]!=null)?m[1]-a[1]:null;
-        return {w,m0:m[0],m1:m[1],a0:a[0],a1:a[1],dD,dS};}).sort((x,y)=>(y.dD??-1e9)-(x.dD??-1e9));
+        return {w,m0:m[0],m1:m[1],a0:a[0],a1:a[1],dD,dS};}).sort((x,y)=>Object.keys(MTPRIX).indexOf(x.w)-Object.keys(MTPRIX).indexOf(y.w));
       const fmtD=v=>v==null?'N/A':(v>0?'+':'')+fmt(v)+' DA';
       const pct=(d,a)=>d==null||!a?'N/A':(d>0?'+':'')+(d/a*100).toFixed(1)+' %';
       const plus=rowsP.filter(x=>x.dD>0).length, moins=rowsP.filter(x=>x.dD<0).length;
