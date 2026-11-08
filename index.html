@@ -430,6 +430,7 @@ function render(){
   }
 
   document.getElementById('content').innerHTML=html;
+  if(tab==='prx') comparerPrix();
 }
 
 document.getElementById('file').addEventListener('change',async e=>{
