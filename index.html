@@ -167,12 +167,53 @@ async function readDecharge(file){
   for(const r of aoa.slice(hi+1)){ const k=txt(r[ki]); if(k) out[k]=montant(r[mi])||0; }
   return out;
 }
+let pdfjsReady=null;
+function loadPdfJs(){
+  if(pdfjsReady) return pdfjsReady;
+  pdfjsReady=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(window.pdfjsLib); };
+    s.onerror=()=>rej(new Error('pdf.js'));
+    document.head.appendChild(s);
+  });
+  return pdfjsReady;
+}
+// Décharge PDF Ecotrack : chaque ligne commence par une référence EC… ; le montant est le nombre le plus à droite de la ligne
+async function readDechargePdf(file){
+  const lib=await loadPdfJs();
+  const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const out={}; const RX=/^EC[A-Z0-9]{4,6}\d{9}$/;
+  for(let p=1;p<=doc.numPages;p++){
+    const page=await doc.getPage(p); const tc=await page.getTextContent();
+    const items=tc.items.map(it=>({s:String(it.str).trim(), x:it.transform[4], y:it.transform[5]})).filter(it=>it.s);
+    const refs=[];
+    for(const it of items){
+      let s=it.s;
+      if(!RX.test(s)){ const r=s.split('').reverse().join(''); if(RX.test(r)) s=r; else continue; }
+      refs.push({k:s,y:it.y});
+    }
+    refs.sort((a,b)=>b.y-a.y);
+    const nums=items.filter(it=>/^\d{1,6}$/.test(it.s));
+    refs.forEach((r,i)=>{
+      const prev=refs[i-1], next=refs[i+1];
+      const gapUp=prev?(prev.y-r.y):(next?(r.y-next.y):100);
+      const gapDown=next?(r.y-next.y):gapUp;
+      const top=r.y+gapUp/2, bot=r.y-gapDown/2;
+      const cand=nums.filter(n=>n.y<=top && n.y>=bot).sort((a,b)=>b.x-a.x);
+      out[r.k]=cand.length?Number(cand[0].s):0;
+    });
+  }
+  return out;
+}
+const readAny=f=>/\.pdf$/i.test(f.name)?readDechargePdf(f):readDecharge(f);
+
 async function compareDecharges(){
   const out=document.getElementById('cmpOut');
   const fa=document.getElementById('cmpA').files[0], fb=document.getElementById('cmpB').files[0];
   if(!fa||!fb){ out.innerHTML='<div class="alert warn">Choisissez les deux fichiers.</div>'; return; }
   let A,B;
-  try{ A=await readDecharge(fa); B=await readDecharge(fb); }catch(e){ A=B=null; }
+  try{ A=await readAny(fa); B=await readAny(fb); }catch(e){ A=B=null; }
   if(!A||!B){ out.innerHTML='<div class="alert ko">Colonnes « Reference/Tracking » ou « Montant » introuvables dans un des fichiers.</div>'; return; }
   const keys=[...new Set([...Object.keys(A),...Object.keys(B)])];
   const lines=keys.map(k=>{
@@ -313,7 +354,7 @@ function render(){
     }
   }
   if(tab==='cmp'){
-    html+=`<div class="card"><h2>Comparer deux décharges</h2><p class="hint">Importez deux fichiers Excel ou CSV contenant les colonnes « Reference » (ou « Tracking ») et « Montant ». Le fichier 1 sert de référence.</p><div class="toolbar"><label>Décharge 1 <input type="file" id="cmpA" accept=".xlsx,.xls,.csv"></label><label>Décharge 2 <input type="file" id="cmpB" accept=".xlsx,.xls,.csv"></label><button class="btn" onclick="compareDecharges()">Comparer les décharges</button></div></div><div id="cmpOut"></div>`;
+    html+=`<div class="card"><h2>Comparer deux décharges</h2><p class="hint">Importez deux fichiers Excel ou CSV contenant les colonnes « Reference » (ou « Tracking ») et « Montant ». Le fichier 1 sert de référence.</p><div class="toolbar"><label>Décharge 1 <input type="file" id="cmpA" accept=".xlsx,.xls,.csv,.pdf"></label><label>Décharge 2 <input type="file" id="cmpB" accept=".xlsx,.xls,.csv,.pdf"></label><button class="btn" onclick="compareDecharges()">Comparer les décharges</button></div></div><div id="cmpOut"></div>`;
   }
   if(tab==='mrg'){
     const cnt=statsWil||Object.fromEntries(Object.entries(groupBy(list.filter(r=>r.statut==='livre'),r=>r.wilaya)).map(([w,v])=>[w,v.length]));
