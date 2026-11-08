@@ -221,14 +221,14 @@ function canonWil(name){
   let best=null; for(const nn of WIL_NORM.keys()){ if(n.endsWith(nn) && (!best||nn.length>best.length)) best=nn; }
   return best?WIL_NORM.get(best):null;
 }
-async function readMtExcel(file){
+async function readMtExcel(file, raw){
   const data=new Uint8Array(await file.arrayBuffer());
   const wb=XLSX.read(data,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
   const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
   const hi=aoa.findIndex(r=>r.some(c=>txt(c)==='Wilaya')); if(hi<0) return null;
   const h=aoa[hi].map(txt); const wi=h.indexOf('Wilaya'), di=h.indexOf('Tarif'), si=h.indexOf('Tarif stop desk');
   const out={};
-  for(const r of aoa.slice(hi+1)){ const w=canonWil(r[wi]); if(!w) continue; const d=Number(r[di]), s=Number(r[si]); out[w]=[d>0?d:null, s>0?s:null]; }
+  for(const r of aoa.slice(hi+1)){ const w=canonWil(r[wi]); if(!w) continue; const d=Number(r[di]), s=Number(r[si]); out[w]=raw?[isNaN(d)?null:d, isNaN(s)?null:s]:[d>0?d:null, s>0?s:null]; }
   return out;
 }
 async function readAndersonPdf(file){
@@ -248,9 +248,9 @@ async function readAndersonPdf(file){
 }
 async function comparerPrix(){
   const out=document.getElementById('prxOut');
-  const fm=document.getElementById('prxMt').files[0], fa=document.getElementById('prxAnd').files[0];
-  let mt, an;
-  try{ mt=fm?await readMtExcel(fm):null; an=fa?await readAndersonPdf(fa):null; }
+  const fm=document.getElementById('prxMt').files[0], fa=document.getElementById('prxAnd').files[0], fr=document.getElementById('prxRet').files[0];
+  let mt, an, ret=null;
+  try{ mt=fm?await readMtExcel(fm):null; an=fa?await readAndersonPdf(fa):null; ret=fr?await readMtExcel(fr,true):null; }
   catch(e){ out.innerHTML=`<div class="alert ko">Lecture impossible : ${e.message}</div>`; return; }
   if(fm && !mt){ out.innerHTML='<div class="alert ko">Colonnes « Wilaya » ou « Tarif » introuvables dans le fichier MT.</div>'; return; }
   if(!mt) mt=MTPRIX; if(!an) an=ANDERSON;
@@ -258,14 +258,16 @@ async function comparerPrix(){
   const rowsP=CANON.map(w=>{
     const m=mt[w]||[null,null], a=an[w]||[null,null];
     const dD=(m[0]!=null&&a[0]!=null)?m[0]-a[0]:null, dS=(m[1]!=null&&a[1]!=null)?m[1]-a[1]:null;
-    return {w,m0:m[0],m1:m[1],a0:a[0],a1:a[1],dD,dS};
+    const r0=ret&&ret[w]?ret[w][0]:null;
+    const manque=(m[0]!=null&&r0!=null)?m[0]-r0:null;
+    return {w,m0:m[0],m1:m[1],a0:a[0],a1:a[1],dD,dS,r0,manque};
   });
   const fmtD=v=>v==null?'N/A':(v>0?'+':'')+fmt(v)+' DA';
   const pct=(d,a)=>d==null||!a?'N/A':(d>0?'+':'')+(d/a*100).toFixed(1)+' %';
   const plus=rowsP.filter(x=>x.dD>0).length, moins=rowsP.filter(x=>x.dD<0).length;
   const alerte=(Object.keys(mt).length<CANON.length-1||Object.keys(an).length<CANON.length-1)?`<div class="alert warn">Wilayas lues : MT ${Object.keys(mt).length}, Anderson ${Object.keys(an).length} sur ${CANON.length}. Les wilayas manquantes sont en N/A.</div>`:'';
   out.innerHTML=`${alerte}<div class="kpis">${kpi('Wilayas où nous sommes plus chers',plus,'à domicile',true)}${kpi('Wilayas où nous sommes moins chers',moins,'à domicile')}</div>
-  <div class="card"><h2>Écart par wilaya (notre prix − Anderson)</h2><table><tr><th>Wilaya</th><th class="num">MT domicile</th><th class="num">Anderson domicile</th><th class="num">Écart domicile</th><th class="num">% gagné (domicile)</th><th class="num">MT stop desk</th><th class="num">Anderson bureau</th><th class="num">Écart bureau</th></tr>${rowsP.map(x=>`<tr><td>${x.w}</td><td class="num">${money(x.m0)}</td><td class="num">${money(x.a0)}</td><td class="num">${fmtD(x.dD)}</td><td class="num">${pct(x.dD,x.a0)}</td><td class="num">${money(x.m1)}</td><td class="num">${money(x.a1)}</td><td class="num">${fmtD(x.dS)}</td></tr>`).join('')}</table></div>`;
+  <div class="card"><h2>Écart par wilaya (notre prix − Anderson)</h2><table><tr><th>Wilaya</th><th class="num">MT domicile</th><th class="num">Anderson domicile</th><th class="num">Écart domicile</th><th class="num">% gagné (domicile)</th><th class="num">MT stop desk</th><th class="num">Anderson bureau</th><th class="num">Écart bureau</th>${ret?'<th class="num">Retour non facturé (domicile)</th><th class="num">Manque à gagner (domicile)</th>':''}</tr>${rowsP.map(x=>`<tr><td>${x.w}</td><td class="num">${money(x.m0)}</td><td class="num">${money(x.a0)}</td><td class="num">${fmtD(x.dD)}</td><td class="num">${pct(x.dD,x.a0)}</td><td class="num">${money(x.m1)}</td><td class="num">${money(x.a1)}</td><td class="num">${fmtD(x.dS)}</td>${ret?`<td class="num">${money(x.r0)}</td><td class="num">${x.manque==null?'N/A':money(x.manque)}</td>`:''}</tr>`).join('')}</table></div>`;
 }
 
 async function compareDecharges(){
@@ -414,7 +416,7 @@ function render(){
     }
   }
   if(tab==='prx'){
-    html+=`<div class="card"><h2>Comparer nos prix avec Anderson</h2><p class="hint">Fichier 1 : export Excel de nos tarifs MT. Fichier 2 : grille PDF Anderson (ALGER SP 25). Écart = notre prix − prix Anderson : positif = nous sommes plus chers. Sans fichier, les tarifs intégrés à l'app sont utilisés.</p><div class="toolbar"><label>Tarifs MT (Excel) <input type="file" id="prxMt" accept=".xlsx,.xls,.csv"></label><label>Tarifs Anderson (PDF) <input type="file" id="prxAnd" accept=".pdf"></label><button class="btn" onclick="comparerPrix()">Comparer nos prix</button></div></div><div id="prxOut"></div>`;
+    html+=`<div class="card"><h2>Comparer nos prix avec Anderson</h2><p class="hint">Fichier 1 : export Excel de nos tarifs MT. Fichier 2 : grille PDF Anderson (ALGER SP 25). Écart = notre prix − prix Anderson : positif = nous sommes plus chers. Sans fichier, les tarifs intégrés à l'app sont utilisés.</p><div class="toolbar"><label>Tarifs MT (Excel) <input type="file" id="prxMt" accept=".xlsx,.xls,.csv"></label><label>Tarifs Anderson (PDF) <input type="file" id="prxAnd" accept=".pdf"></label><label>Retours non facturés (Excel, optionnel) <input type="file" id="prxRet" accept=".xlsx,.xls,.csv"></label><button class="btn" onclick="comparerPrix()">Comparer nos prix</button></div></div><div id="prxOut"></div>`;
   }
   if(tab==='cmp'){
     html+=`<div class="card"><h2>Comparer deux décharges</h2><p class="hint">Importez deux fichiers Excel ou CSV contenant les colonnes « Reference » (ou « Tracking ») et « Montant ». Le fichier 1 sert de référence.</p><div class="toolbar"><label>Décharge 1 <input type="file" id="cmpA" accept=".xlsx,.xls,.csv,.pdf"></label><label>Décharge 2 <input type="file" id="cmpB" accept=".xlsx,.xls,.csv,.pdf"></label><button class="btn" onclick="compareDecharges()">Comparer les décharges</button></div></div><div id="cmpOut"></div>`;
