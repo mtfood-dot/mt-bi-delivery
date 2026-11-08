@@ -191,7 +191,7 @@ function render(){
   const set=(sel,vals,label)=>{ const c=sel.value; sel.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option ${v===c?'selected':''}>${v}</option>`).join(''); };
   set(stSel,[...new Set(rows.map(r=>r.station))].sort(),'Toutes'); set(wiSel,[...new Set(rows.map(r=>r.wilaya))].sort(),'Toutes'); set(suSel,[...new Set(rows.map(r=>r.sous))].sort(),'Tous');
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('');
-  if(!rows.length) return;
+  if(!rows.length && !paiements.length && !statsWil) return;
   const list=filtered(), S=summary(list);
   document.getElementById('info').textContent=`${S.n} colis affichés sur ${rows.length}`;
   const byW=groupBy(list,r=>r.wilaya), byS=groupBy(list,r=>r.station), bySub=groupBy(list,r=>r.sous);
@@ -294,7 +294,7 @@ document.getElementById('file').addEventListener('change',async e=>{
     catch(err){ errs.push(f.name); }
   }
   if(all.length) rows=all;
-  document.getElementById('banner').innerHTML=`<div class="banner">${files.length} fichier(s) importé(s), ${fmt(all.length)} colis lus. Données réelles Ecotrack.${errs.length?` Non lus : ${errs.join(', ')}`:''}</div>`;
+  document.getElementById('banner').innerHTML=`<div class="banner">${files.length} fichier(s) importé(s), ${fmt(all.length)} colis lus${paiements.length?`, ${fmt(paiements.length)} paiements lus`:''}${statsWil?', statistiques lues':''}. Données réelles Ecotrack.${errs.length?` Non lus : ${errs.join(', ')}`:''}</div>`;
   render();
 });
 
