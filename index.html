@@ -74,17 +74,20 @@
 </main>
 
 <script>
-let rows=[]; let tab='vue'; let statsWil=null;
+let rows=[]; let tab='vue'; let statsWil=null; let paiements=[];
 // Référence marge par wilaya (DA par colis) = prix MT − prix sous-traitant (ALGER SP 25)
 const MARGE={"Adrar":300,"Chlef":200,"Laghouat":200,"Oum El Bouaghi":150,"Batna":150,"Béjaïa":150,"Biskra":200,"Béchar":450,"Blida":-50,"Bouira":250,"Tamanrasset":350,"Tébessa":150,"Tlemcen":150,"Tiaret":150,"Tizi Ouzou":250,"Alger":150,"Djelfa":250,"Jijel":150,"Sétif":100,"Saïda":150,"Skikda":150,"Sidi Bel Abbès":150,"Annaba":150,"Guelma":150,"Constantine":150,"Médéa":250,"Mostaganem":150,"M'Sila":150,"Mascara":150,"Ouargla":100,"Oran":100,"El Bayadh":400,"Illizi":50,"Bordj Bou Arréridj":250,"Boumerdès":200,"El Tarf":100,"Tindouf":350,"Tissemsilt":100,"El Oued":100,"Khenchela":100,"Souk Ahras":100,"Tipaza":150,"Mila":100,"Aïn Defla":250,"Naâma":250,"Aïn Témouchent":100,"Ghardaïa":100,"Relizane":100,"Timimoun":300,"Bordj Badji Mokhtar":200,"Ouled Djellal":100,"Béni Abbès":150,"In Salah":300,"In Guezzam":50,"Touggourt":100,"Djanet":null,"El M'Ghair":100,"El Meniaa":200};
 MARGE["Beni Abbes"]=MARGE["Béni Abbès"]; MARGE["Bordj Bou Arreridj"]=MARGE["Bordj Bou Arréridj"]; MARGE["Saida"]=MARGE["Saïda"];
+// Notre grille MT : [à domicile, stop desk] en DA
+const MTPRIX={"Adrar":[1550,950],"Chlef":[750,450],"Laghouat":[850,600],"Oum El Bouaghi":[800,450],"Batna":[800,450],"Béjaïa":[800,450],"Biskra":[850,500],"Béchar":[1200,800],"Blida":[450,350],"Bouira":[750,450],"Tamanrasset":[1700,900],"Tébessa":[800,450],"Tlemcen":[800,450],"Tiaret":[800,450],"Tizi Ouzou":[750,450],"Alger":[450,350],"Djelfa":[900,450],"Jijel":[800,450],"Sétif":[750,450],"Saïda":[800,450],"Skikda":[800,450],"Sidi Bel Abbès":[800,450],"Annaba":[800,450],"Guelma":[800,450],"Constantine":[800,450],"Médéa":[750,450],"Mostaganem":[800,450],"M'Sila":[800,450],"Mascara":[800,450],"Ouargla":[850,600],"Oran":[750,450],"El Bayadh":[1050,550],"Illizi":[1750,900],"Bordj Bou Arréridj":[750,450],"Boumerdès":[700,450],"El Tarf":[750,450],"Tindouf":[1600,950],"Tissemsilt":[750,450],"El Oued":[850,600],"Khenchela":[750,450],"Souk Ahras":[750,450],"Tipaza":[650,450],"Mila":[750,450],"Aïn Defla":[750,450],"Naâma":[1000,650],"Aïn Témouchent":[750,450],"Ghardaïa":[850,550],"Relizane":[750,450],"Timimoun":[1550,900],"Bordj Badji Mokhtar":[1850,null],"Ouled Djellal":[850,450],"Béni Abbès":[1400,750],"In Salah":[1550,900],"In Guezzam":[1550,null],"Touggourt":[850,600],"Djanet":[null,null],"El M'Ghair":[850,550],"El Meniaa":[950,650]};
+MTPRIX["Beni Abbes"]=MTPRIX["Béni Abbès"]; MTPRIX["Bordj Bou Arreridj"]=MTPRIX["Bordj Bou Arréridj"]; MTPRIX["Saida"]=MTPRIX["Saïda"];
 const STATUTS={
   transit:{label:'En transit',color:'#2563eb'},
   valider:{label:'À valider',color:'#7c3aed'},
   livre:{label:'Livrée, non encaissée',color:'#15803d'},
   retour:{label:'À retourner',color:'#b45309'}
 };
-const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
+const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['pay','Marge par colis'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
 
 const fmt=n=>Math.round(n).toLocaleString('fr-FR');
 const money=v=>v==null?'N/A':fmt(v)+' DA';
@@ -138,6 +141,18 @@ function parseStats(data){
   const out={};
   for(const r of aoa.slice(hi+1)){ const w=txt(r[wi]); if(w&&li>=0) out[w]=Number(r[li])||0; }
   return out;
+}
+
+function parsePaiements(data){
+  const wb=XLSX.read(data,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const hi=aoa.findIndex(r=>r.some(c=>txt(c)==='Tracking'));
+  if(hi<0) return [];
+  const h=aoa[hi].map(txt); const g=(r,k)=>{const i=h.indexOf(k); return i>=0?r[i]:null;};
+  return aoa.slice(hi+1).filter(r=>txt(g(r,'Tracking'))).map(r=>({
+    trk:txt(g(r,'Tracking')), wil:txt(g(r,'Wilaya')), prest:txt(g(r,'Prestation')),
+    stop:/stop/i.test(txt(g(r,'Prestation'))), fee:Number(g(r,'Frais de livraison'))||0
+  }));
 }
 
 function filtered(){
@@ -243,6 +258,16 @@ function render(){
     const rt=list.filter(r=>r.isRetour); const g=groupBy(rt,r=>r.expediteur||'Non renseigné');
     html+=`<div class="kpis">${kpi('Colis retournés',fmt(rt.length),'fichiers retours (en transit et à retourner)',true)}${kpi('Expéditeurs concernés',Object.keys(g).length,'')}</div>`+bars(g,'Colis retournés par expéditeur',v=>v.length,'colis');
   }
+  if(tab==='pay'){
+    if(!paiements.length){
+      html+=`<div class="card"><p class="hint">Importez le fichier « Historique paiements » Ecotrack (le nom du fichier doit contenir « paiement »). La marge de chaque colis est calculée : notre prix MT moins le prix retenu.</p></div>`;
+    } else {
+      const det=paiements.map(p=>{const mt=MTPRIX[p.wil]; const price=mt?(p.stop?mt[1]:mt[0]):null; return {...p,price,marge:(price==null?null:price-p.fee)};});
+      const ok=det.filter(x=>x.marge!=null); const tot=ok.reduce((s,x)=>s+x.marge,0);
+      html+=`<div class="kpis">${kpi('Marge sur les colis',fmt(tot)+' DA',`${ok.length} colis comparés à notre grille`,true)}${kpi('Colis sans prix MT',det.length-ok.length,'à vérifier')}</div>`;
+      html+=`<div class="card"><h2>Détail par colis</h2><table><tr><th>Tracking</th><th>Wilaya</th><th>Prestation</th><th class="num">Prix retenu</th><th class="num">Notre prix</th><th class="num">Marge</th></tr>${det.map(x=>`<tr><td>${x.trk}</td><td>${x.wil}</td><td>${x.prest}</td><td class="num">${fmt(x.fee)} DA</td><td class="num">${x.price==null?'N/A':fmt(x.price)+' DA'}</td><td class="num">${x.marge==null?'N/A':fmt(x.marge)+' DA'}</td></tr>`).join('')}</table></div>`;
+    }
+  }
   if(tab==='mrg'){
     const cnt=statsWil||Object.fromEntries(Object.entries(groupBy(list.filter(r=>r.statut==='livre'),r=>r.wilaya)).map(([w,v])=>[w,v.length]));
     const det=Object.entries(cnt).map(([w,n])=>{const m=MARGE[w]; return {w,n,m:(m===undefined?null:m),tot:(m==null?null:m*n)};});
@@ -263,6 +288,7 @@ document.getElementById('file').addEventListener('change',async e=>{
     try{
       const data=new Uint8Array(await f.arrayBuffer());
       if(/statist/i.test(f.name)){ const st=parseStats(data); if(Object.keys(st).length){ statsWil=st; continue; } }
+      if(/paiement/i.test(f.name)){ const pp=parsePaiements(data); if(pp.length){ paiements=pp; continue; } }
       const parsed=parseWorkbook(data,f.name); if(!parsed.length) errs.push(f.name); all=all.concat(parsed);
     }
     catch(err){ errs.push(f.name); }
