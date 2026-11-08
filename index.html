@@ -74,10 +74,12 @@
 </main>
 
 <script>
-let rows=[]; let tab='vue'; let statsWil=null; let paiements=[];
+let rows=[]; let tab='vue'; let statsWil=null; let paiements=[]; let showPrix=false;
 // Référence marge par wilaya (DA par colis) = prix MT − prix sous-traitant (ALGER SP 25)
 const MARGE={"Adrar":300,"Chlef":200,"Laghouat":200,"Oum El Bouaghi":150,"Batna":150,"Béjaïa":150,"Biskra":200,"Béchar":450,"Blida":-50,"Bouira":250,"Tamanrasset":350,"Tébessa":150,"Tlemcen":150,"Tiaret":150,"Tizi Ouzou":250,"Alger":150,"Djelfa":250,"Jijel":150,"Sétif":100,"Saïda":150,"Skikda":150,"Sidi Bel Abbès":150,"Annaba":150,"Guelma":150,"Constantine":150,"Médéa":250,"Mostaganem":150,"M'Sila":150,"Mascara":150,"Ouargla":100,"Oran":100,"El Bayadh":400,"Illizi":50,"Bordj Bou Arréridj":250,"Boumerdès":200,"El Tarf":100,"Tindouf":350,"Tissemsilt":100,"El Oued":100,"Khenchela":100,"Souk Ahras":100,"Tipaza":150,"Mila":100,"Aïn Defla":250,"Naâma":250,"Aïn Témouchent":100,"Ghardaïa":100,"Relizane":100,"Timimoun":300,"Bordj Badji Mokhtar":-100,"Ouled Djellal":100,"Béni Abbès":-100,"In Salah":300,"In Guezzam":50,"Touggourt":100,"Djanet":null,"El M'Ghair":100,"El Meniaa":200};
 MARGE["Beni Abbes"]=MARGE["Béni Abbès"]; MARGE["Bordj Bou Arreridj"]=MARGE["Bordj Bou Arréridj"]; MARGE["Saida"]=MARGE["Saïda"];
+// Grille Anderson (ALGER SP 25) : [à domicile, bureau] en DA
+const ANDERSON={"Adrar":[1250,650],"Chlef":[550,250],"Laghouat":[650,250],"Oum El Bouaghi":[650,250],"Batna":[650,250],"Béjaïa":[650,250],"Biskra":[650,250],"Béchar":[750,450],"Blida":[500,250],"Bouira":[500,250],"Tamanrasset":[1350,700],"Tébessa":[650,250],"Tlemcen":[650,250],"Tiaret":[650,250],"Tizi Ouzou":[500,250],"Alger":[300,250],"Djelfa":[650,250],"Jijel":[650,250],"Sétif":[650,250],"Saïda":[650,250],"Skikda":[650,250],"Sidi Bel Abbès":[650,250],"Annaba":[650,250],"Guelma":[650,250],"Constantine":[650,250],"Médéa":[500,250],"Mostaganem":[650,250],"M'Sila":[650,250],"Mascara":[650,250],"Ouargla":[750,450],"Oran":[650,250],"El Bayadh":[650,250],"Illizi":[1700,1000],"Bordj Bou Arréridj":[500,250],"Boumerdès":[500,250],"El Tarf":[650,450],"Tindouf":[1250,null],"Tissemsilt":[650,250],"El Oued":[750,450],"Khenchela":[650,250],"Souk Ahras":[650,250],"Tipaza":[500,250],"Mila":[650,250],"Aïn Defla":[500,250],"Naâma":[750,250],"Aïn Témouchent":[650,250],"Ghardaïa":[750,450],"Relizane":[650,250],"Timimoun":[1250,750],"Bordj Badji Mokhtar":[1650,null],"Ouled Djellal":[750,250],"Béni Abbès":[1250,null],"In Salah":[1250,750],"In Guezzam":[1500,null],"Touggourt":[750,450],"Djanet":[1650,750],"El M'Ghair":[750,450],"El Meniaa":[750,null]};
 // Notre grille MT : [à domicile, stop desk] en DA
 const MTPRIX={"Adrar":[1550,950],"Chlef":[750,450],"Laghouat":[850,600],"Oum El Bouaghi":[800,450],"Batna":[800,450],"Béjaïa":[800,450],"Biskra":[850,500],"Béchar":[1200,800],"Blida":[450,350],"Bouira":[750,450],"Tamanrasset":[1700,900],"Tébessa":[800,450],"Tlemcen":[800,450],"Tiaret":[800,450],"Tizi Ouzou":[750,450],"Alger":[450,350],"Djelfa":[900,450],"Jijel":[800,450],"Sétif":[750,450],"Saïda":[800,450],"Skikda":[800,450],"Sidi Bel Abbès":[800,450],"Annaba":[800,450],"Guelma":[800,450],"Constantine":[800,450],"Médéa":[750,450],"Mostaganem":[800,450],"M'Sila":[800,450],"Mascara":[800,450],"Ouargla":[850,600],"Oran":[750,450],"El Bayadh":[1050,550],"Illizi":[1750,900],"Bordj Bou Arréridj":[750,450],"Boumerdès":[700,450],"El Tarf":[750,450],"Tindouf":[1600,950],"Tissemsilt":[750,450],"El Oued":[850,600],"Khenchela":[750,450],"Souk Ahras":[750,450],"Tipaza":[650,450],"Mila":[750,450],"Aïn Defla":[750,450],"Naâma":[1000,650],"Aïn Témouchent":[750,450],"Ghardaïa":[850,550],"Relizane":[750,450],"Timimoun":[1550,900],"Bordj Badji Mokhtar":[1550,null],"Ouled Djellal":[850,450],"Béni Abbès":[1150,750],"In Salah":[1550,900],"In Guezzam":[1550,null],"Touggourt":[850,600],"Djanet":[null,null],"El M'Ghair":[850,550],"El Meniaa":[950,650]};
 MTPRIX["Beni Abbes"]=MTPRIX["Béni Abbès"]; MTPRIX["Bordj Bou Arreridj"]=MTPRIX["Bordj Bou Arréridj"]; MTPRIX["Saida"]=MTPRIX["Saïda"];
@@ -87,7 +89,7 @@ const STATUTS={
   livre:{label:'Livrée, non encaissée',color:'#15803d'},
   retour:{label:'À retourner',color:'#b45309'}
 };
-const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['pay','Marge par colis'],['cmp','Comparer décharges'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
+const TABS=[['vue','Vue d’ensemble'],['wil','Wilaya livrée'],['ret','Retour par expéditeur'],['mrg','Marge gagnée'],['pay','Marge par colis'],['cmp','Comparer décharges'],['prx','Comparer nos prix'],['zones','Wilayas & stations'],['sous','Sous-traitants'],['finance','Finances'],['qualite','Qualité des données'],['detail','Détail']];
 
 const fmt=n=>Math.round(n).toLocaleString('fr-FR');
 const money=v=>v==null?'N/A':fmt(v)+' DA';
@@ -276,7 +278,7 @@ function render(){
   const set=(sel,vals,label)=>{ const c=sel.value; sel.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option ${v===c?'selected':''}>${v}</option>`).join(''); };
   set(stSel,[...new Set(rows.map(r=>r.station))].sort(),'Toutes'); set(wiSel,[...new Set(rows.map(r=>r.wilaya))].sort(),'Toutes'); set(suSel,[...new Set(rows.map(r=>r.sous))].sort(),'Tous');
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab ${k===tab?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('');
-  if(!rows.length && !paiements.length && !statsWil && tab!=='cmp') return;
+  if(!rows.length && !paiements.length && !statsWil && tab!=='cmp' && tab!=='prx') return;
   const list=filtered(), S=summary(list);
   document.getElementById('info').textContent=`${S.n} colis affichés sur ${rows.length}`;
   const byW=groupBy(list,r=>r.wilaya), byS=groupBy(list,r=>r.station), bySub=groupBy(list,r=>r.sous);
@@ -351,6 +353,19 @@ function render(){
       const ok=det.filter(x=>x.marge!=null); const tot=ok.reduce((s,x)=>s+x.marge,0);
       html+=`<div class="kpis">${kpi('Marge sur les colis',fmt(tot)+' DA',`${ok.length} colis comparés à notre grille`,true)}${kpi('Colis sans prix MT',det.length-ok.length,'à vérifier')}</div>`;
       html+=`<div class="card"><h2>Détail par colis</h2><table><tr><th>Tracking</th><th>Wilaya</th><th>Prestation</th><th class="num">Prix retenu</th><th class="num">Notre prix</th><th class="num">Marge</th></tr>${det.map(x=>`<tr><td>${x.trk}</td><td>${x.wil}</td><td>${x.prest}</td><td class="num">${fmt(x.fee)} DA</td><td class="num">${x.price==null?'N/A':fmt(x.price)+' DA'}</td><td class="num">${x.marge==null?'N/A':fmt(x.marge)+' DA'}</td></tr>`).join('')}</table></div>`;
+    }
+  }
+  if(tab==='prx'){
+    if(!showPrix){
+      html+=`<div class="card"><h2>Comparer nos prix avec Anderson (ALGER SP 25)</h2><p class="hint">Compare notre grille MT (à domicile et stop desk) avec la grille Anderson, wilaya par wilaya. Écart = notre prix − prix Anderson : positif = nous sommes plus chers.</p><button class="btn" onclick="showPrix=true;render()">Comparer les prix</button></div>`;
+    } else {
+      const rowsP=Object.keys(ANDERSON).map(w=>{const m=MTPRIX[w]||[null,null]; const a=ANDERSON[w];
+        const dD=(m[0]!=null&&a[0]!=null)?m[0]-a[0]:null; const dS=(m[1]!=null&&a[1]!=null)?m[1]-a[1]:null;
+        return {w,m0:m[0],m1:m[1],a0:a[0],a1:a[1],dD,dS};}).sort((x,y)=>(y.dD??-1e9)-(x.dD??-1e9));
+      const fmtD=v=>v==null?'N/A':(v>0?'+':'')+fmt(v)+' DA';
+      const plus=rowsP.filter(x=>x.dD>0).length, moins=rowsP.filter(x=>x.dD<0).length;
+      html+=`<div class="kpis">${kpi('Wilayas où nous sommes plus chers',plus,'à domicile',true)}${kpi('Wilayas où nous sommes moins chers',moins,'à domicile')}</div>`;
+      html+=`<div class="card"><h2>Écart par wilaya (notre prix − Anderson)</h2><table><tr><th>Wilaya</th><th class="num">MT domicile</th><th class="num">Anderson domicile</th><th class="num">Écart domicile</th><th class="num">MT stop desk</th><th class="num">Anderson bureau</th><th class="num">Écart bureau</th></tr>${rowsP.map(x=>`<tr><td>${x.w}</td><td class="num">${money(x.m0)}</td><td class="num">${money(x.a0)}</td><td class="num">${fmtD(x.dD)}</td><td class="num">${money(x.m1)}</td><td class="num">${money(x.a1)}</td><td class="num">${fmtD(x.dS)}</td></tr>`).join('')}</table></div>`;
     }
   }
   if(tab==='cmp'){
